@@ -1,0 +1,101 @@
+[
+  {
+    "items": [
+      {
+        "id": "8591c3bd-3981-4297-87db-1d261cf3c4a1",
+        "title": "Pikachu Stationery",
+        "slug": "pikachu-stationery",
+        "priceText": "AED 120",
+        "imageUrl": "https://cdn.sanity.io/images/1coje25j/production/c3449d7fd70177db6f0723c122fbbd5a045a51dd-800x800.jpg",
+        "quantity": 1
+      },
+      {
+        "id": "0458c628-59a0-441e-9a67-eda9c2acc5c7",
+        "title": "Bulbasaur Mug",
+        "slug": "bulbasaur-mug",
+        "priceText": "AED 50",
+        "imageUrl": "https://cdn.sanity.io/images/1coje25j/production/ad8c80de959238b61c850dc94f29b6a9ea850b17-950x1000.jpg",
+        "quantity": 1
+      },
+      {
+        "id": "301fdcc3-e2d7-4e64-86cc-a6288d5620f7",
+        "title": "Pikachu Sticker",
+        "slug": "pikachu-sticker",
+        "priceText": "AED 40",
+        "imageUrl": "https://cdn.sanity.io/images/1coje25j/production/0ecce0877bf3a1250a956b5cf7edbaf43f1f2f3a-432x434.png",
+        "quantity": 1
+      }
+    ],
+    "totalAmount": 210,
+    "totalCount": 3,
+    "currency": "AED",
+    "customer": {
+      "name": "Stash",
+      "email": "stashcreative001@gmail.com"
+    },
+    "profile": {
+      "line1": "Al Furjan",
+      "line2": "1306 Glamz Tower 1, Jebel Ali, Dubai",
+      "city": "Dubai",
+      "state": "Dubai",
+      "postalCode": "00000",
+      "country": "United Arab Emirates",
+      "mobile": "0585189877",
+      "whatsapp": "0585189877",
+      "whatsappSameAsMobile": true
+    },
+    "id": "ORD-MI52K1UK-M3M2X2",
+    "createdAt": "2025-11-18T21:11:57.788Z",
+    "status": "paid",
+    "proofUrl": "/proofs/ORD-MI52K1UK-M3M2X2-1763500343763-poke-mon-build-a-bear-workshop-exclusive-charmander-bundle-jpg.jpg"
+  },
+  {
+    "items": [
+      {
+        "id": "e3d7d814-760b-407b-a3e7-b3d6cabc8d99",
+        "title": "Charmander Bundle",
+        "slug": "charmander-bundle",
+        "priceText": "AED 260",
+        "imageUrl": "https://cdn.sanity.io/images/1coje25j/production/1a089ab00dab519c0988032c2af8f02816cb59cb-1000x1000.jpg",
+        "quantity": 1
+      },
+      {
+        "id": "8591c3bd-3981-4297-87db-1d261cf3c4a1",
+        "title": "Pikachu Stationery",
+        "slug": "pikachu-stationery",
+        "priceText": "AED 120",
+        "imageUrl": "https://cdn.sanity.io/images/1coje25j/production/c3449d7fd70177db6f0723c122fbbd5a045a51dd-800x800.jpg",
+        "quantity": 1
+      },
+      {
+        "id": "16d4ae6a-8a6f-4136-8bf3-06a15868ead9",
+        "title": "Charmander Sticker",
+        "slug": "charmander-sticker",
+        "priceText": "AED 10",
+        "imageUrl": "https://cdn.sanity.io/images/1coje25j/production/56049a3c5b69006c51769baa6d6ccc3e88102ef1-530x600.png",
+        "quantity": 1
+      }
+    ],
+    "totalAmount": 390,
+    "totalCount": 3,
+    "currency": "AED",
+    "customer": {
+      "name": "Stash",
+      "email": "stashcreative001@gmail.com"
+    },
+    "profile": {
+      "line1": "Al Furjan",
+      "line2": "1306 Glamz Tower 1, Jebel Ali, Dubai",
+      "city": "Dubai",
+      "state": "Dubai",
+      "postalCode": "00000",
+      "country": "United Arab Emirates",
+      "mobile": "0585189877",
+      "whatsapp": "0585189877",
+      "whatsappSameAsMobile": true
+    },
+    "id": "ORD-MI52FK4H-A7FEID",
+    "createdAt": "2025-11-18T21:08:28.193Z",
+    "status": "in-transit"
+  }
+]
