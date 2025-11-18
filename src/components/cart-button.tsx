@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { CartItem, useCart } from "./cart-context";
 
 type CartButtonProps = {
@@ -12,6 +13,7 @@ type CartButtonProps = {
 
 export default function CartButton({ label }: CartButtonProps) {
   const { items, totalCount, totalAmount, currency, removeItem, clear, updateQuantity } = useCart();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
@@ -43,6 +45,10 @@ export default function CartButton({ label }: CartButtonProps) {
 
   const handleCheckout = async () => {
     if (!hasItems || isCheckingOut) return;
+    if (!session?.user) {
+      router.push("/sign-in");
+      return;
+    }
     setIsCheckingOut(true);
     setCheckoutError(null);
     setOrderId(null);

@@ -4,10 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { CartItem, useCart } from "../../components/cart-context";
 
 export default function StashClient() {
   const { items, totalCount, totalAmount, currency, removeItem, clear, updateQuantity } = useCart();
+  const router = useRouter();
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -38,6 +40,10 @@ export default function StashClient() {
 
   const handleCheckout = async () => {
     if (!hasItems || isCheckingOut) return;
+    if (!session?.user) {
+      router.push("/sign-in");
+      return;
+    }
     setIsCheckingOut(true);
     setCheckoutError(null);
     setOrderId(null);
