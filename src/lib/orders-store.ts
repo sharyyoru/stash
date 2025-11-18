@@ -138,3 +138,13 @@ export async function setOrderProof(
   if (error || !data) return null;
   return mapRowToOrder(data);
 }
+
+export async function deleteOrder(id: string): Promise<boolean> {
+  const { error } = await supabaseAdmin
+    .from("orders")
+    .delete()
+    .eq("id", id);
+
+  if (error) return false;
+  return true;
+}

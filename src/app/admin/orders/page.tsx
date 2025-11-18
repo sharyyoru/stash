@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { authOptions } from "../../api/auth/[...nextauth]/route";
 import {
@@ -6,6 +7,7 @@ import {
   type Order,
   type OrderStatus,
   updateOrderStatus,
+  deleteOrder,
 } from "../../../lib/orders-store";
 import CopyableText from "../../../components/copyable-text";
 import OrderProofUpload from "../../../components/order-proof-upload";
@@ -18,6 +20,14 @@ function isAdminEmail(email: string | null | undefined): boolean {
 }
 
 const statusOptions: { value: OrderStatus; label: string }[] = [
+  { value: "payment-pending", label: "Payment pending" },
+  { value: "paid", label: "Paid" },
+  { value: "in-transit", label: "In transit" },
+  { value: "delivered", label: "Delivered" },
+];
+
+const filterTabs: { value: "all" | OrderStatus; label: string }[] = [
+  { value: "all", label: "All" },
   { value: "payment-pending", label: "Payment pending" },
   { value: "paid", label: "Paid" },
   { value: "in-transit", label: "In transit" },
@@ -49,7 +59,19 @@ async function updateStatus(formData: FormData) {
   redirect("/admin/orders");
 }
 
-export default async function AdminOrdersPage() {
+async function deleteOrderAction(formData: FormData) {
+  "use server";
+  const id = formData.get("id");
+  if (!id) return;
+  await deleteOrder(String(id));
+  redirect("/admin/orders");
+}
+
+export default async function AdminOrdersPage({
+  searchParams,
+}: {
+  searchParams?: { status?: string };
+}) {
   const session = await getServerSession(authOptions);
   const email = session?.user?.email ?? null;
 
@@ -58,6 +80,20 @@ export default async function AdminOrdersPage() {
   }
 
   const orders: Order[] = await listOrders();
+
+  const rawStatus = (searchParams?.status || "all") as string;
+  let activeStatus: "all" | OrderStatus = "all";
+  if (
+    rawStatus === "payment-pending" ||
+    rawStatus === "paid" ||
+    rawStatus === "in-transit" ||
+    rawStatus === "delivered"
+  ) {
+    activeStatus = rawStatus;
+  }
+
+  const filteredOrders =
+    activeStatus === "all" ? orders : orders.filter((o) => o.status === activeStatus);
 
   const baseCurrency =
     orders.find((o) => o.currency)?.currency || "AED";
@@ -94,6 +130,27 @@ export default async function AdminOrdersPage() {
           <p className="text-sm text-neutral-600">No orders yet.</p>
         ) : (
           <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              {filterTabs.map((tab) => {
+                const isActive = tab.value === activeStatus;
+                const href =
+                  tab.value === "all" ? "/admin/orders" : `/admin/orders?status=${tab.value}`;
+                return (
+                  <Link
+                    key={tab.value}
+                    href={href}
+                    className={
+                      "inline-flex items-center rounded-full border px-3 py-1.5 text-[11px] font-medium shadow-sm transition " +
+                      (isActive
+                        ? "border-neutral-900 bg-neutral-900 text-white"
+                        : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50")
+                    }
+                  >
+                    {tab.label}
+                  </Link>
+                );
+              })}
+            </div>
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
               <div className="flex flex-wrap items-center gap-3">
                 <p className="text-xs font-semibold text-emerald-700">
@@ -105,16 +162,19 @@ export default async function AdminOrdersPage() {
               </div>
             </div>
 
-            {orders.map((order) => {
-              const profile = (order as any).profile || {};
-              const mobile: string | undefined = profile.mobile;
-              const whatsapp: string | undefined = profile.whatsapp;
+            {filteredOrders.length === 0 ? (
+              <p className="text-sm text-neutral-600">No orders with this status yet.</p>
+            ) : (
+              filteredOrders.map((order) => {
+                const profile = (order as any).profile || {};
+                const mobile: string | undefined = profile.mobile;
+                const whatsapp: string | undefined = profile.whatsapp;
 
-              const whatsappLink = whatsapp
-                ? `https://wa.me/${whatsapp.replace(/\D/g, "")}`
-                : "#";
+                const whatsappLink = whatsapp
+                  ? `https://wa.me/${whatsapp.replace(/\D/g, "")}`
+                  : "#";
 
-              return (
+                return (
                 <div
                   key={order.id}
                   className="space-y-2 rounded-3xl bg-white p-4 text-sm shadow-sm ring-1 ring-neutral-200"
@@ -128,30 +188,41 @@ export default async function AdminOrdersPage() {
                         {formatOrderDate(order.createdAt)}
                       </p>
                     </div>
-                    <form action={updateStatus} className="flex items-center gap-2 text-xs">
-                      <label className="text-neutral-600" htmlFor={`status-${order.id}`}>
-                        Status
-                      </label>
-                      <input type="hidden" name="id" value={order.id} />
-                      <select
-                        id={`status-${order.id}`}
-                        name="status"
-                        defaultValue={order.status}
-                        className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-300"
-                      >
-                        {statusOptions.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="submit"
-                        className="rounded-full bg-neutral-900 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm hover:bg-neutral-800"
-                      >
-                        Update
-                      </button>
-                    </form>
+                    <div className="flex items-center gap-3 text-xs">
+                      <form action={updateStatus} className="flex items-center gap-2 text-xs">
+                        <label className="text-neutral-600" htmlFor={`status-${order.id}`}>
+                          Status
+                        </label>
+                        <input type="hidden" name="id" value={order.id} />
+                        <select
+                          id={`status-${order.id}`}
+                          name="status"
+                          defaultValue={order.status}
+                          className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-300"
+                        >
+                          {statusOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="submit"
+                          className="rounded-full bg-neutral-900 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm hover:bg-neutral-800"
+                        >
+                          Update
+                        </button>
+                      </form>
+                      <form action={deleteOrderAction} className="flex items-center">
+                        <input type="hidden" name="id" value={order.id} />
+                        <button
+                          type="submit"
+                          className="rounded-full border border-red-200 bg-white px-3 py-1.5 text-[11px] font-medium text-red-600 shadow-sm hover:border-red-300 hover:bg-red-50"
+                        >
+                          Delete
+                        </button>
+                      </form>
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-600">
@@ -202,7 +273,8 @@ export default async function AdminOrdersPage() {
                   <OrderProofUpload orderId={order.id} proofUrl={order.proofUrl} />
                 </div>
               );
-            })}
+            })
+            )}
           </div>
         )}
       </div>

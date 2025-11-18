@@ -1,8 +1,12 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 
 export default function SignInPage() {
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callback") || "/";
+  const fromStash = callbackUrl === "/stash";
   return (
     <div className="bg-neutral-50">
       <div className="mx-auto flex min-h-[calc(100vh-4rem-2.25rem)] max-w-6xl items-center justify-center px-4 py-10">
@@ -12,7 +16,7 @@ export default function SignInPage() {
             <div className="space-y-3">
               <button
                 type="button"
-                onClick={() => signIn("google", { callbackUrl: "/" })}
+                onClick={() => signIn("google", { callbackUrl })}
                 className="inline-flex w-full items-center justify-center rounded-full bg-neutral-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-neutral-800"
               >
                 Continue with Google
@@ -30,7 +34,9 @@ export default function SignInPage() {
                 Sign in to your stash
               </h1>
               <p className="text-xs text-neutral-600">
-                Use your Google account to sign in. No spam, just order updates.
+                {fromStash
+                  ? "Create or login with your Google account to checkout your stash."
+                  : "Use your Google account to sign in. No spam, just order updates."}
               </p>
             </div>
           </div>

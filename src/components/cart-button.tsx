@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { CartItem, useCart } from "./cart-context";
 
 type CartButtonProps = {
@@ -14,6 +14,7 @@ type CartButtonProps = {
 export default function CartButton({ label }: CartButtonProps) {
   const { items, totalCount, totalAmount, currency, removeItem, clear, updateQuantity } = useCart();
   const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
@@ -43,10 +44,27 @@ export default function CartButton({ label }: CartButtonProps) {
     ? items.find((i) => i.id === pendingRemoveId) || null
     : null;
 
+  useEffect(() => {
+    if (pathname !== "/stash") return;
+    try {
+      const flag = window.localStorage.getItem("stash_open_cart_after_login");
+      if (flag === "1") {
+        window.localStorage.removeItem("stash_open_cart_after_login");
+        setOpen(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, [pathname]);
+
   const handleCheckout = async () => {
     if (!hasItems || isCheckingOut) return;
     if (!session?.user) {
-      router.push("/sign-in");
+      try {
+        window.localStorage.setItem("stash_open_cart_after_login", "1");
+      } catch {}
+      setOpen(false);
+      router.push("/sign-in?callback=/stash");
       return;
     }
     setIsCheckingOut(true);

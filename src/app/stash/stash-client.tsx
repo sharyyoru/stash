@@ -41,7 +41,10 @@ export default function StashClient() {
   const handleCheckout = async () => {
     if (!hasItems || isCheckingOut) return;
     if (!session?.user) {
-      router.push("/sign-in");
+      try {
+        window.localStorage.setItem("stash_open_cart_after_login", "1");
+      } catch {}
+      router.push("/sign-in?callback=/stash");
       return;
     }
     setIsCheckingOut(true);
