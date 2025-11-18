@@ -99,11 +99,20 @@ export default function CartButton({ label }: CartButtonProps) {
         }),
       });
 
+      const data = await res.json().catch(() => null);
+
+      if (res.status === 401) {
+        try {
+          window.localStorage.setItem("stash_open_cart_after_login", "1");
+        } catch {}
+        setOpen(false);
+        router.push("/sign-in?callback=/stash");
+        return;
+      }
+
       if (!res.ok) {
         throw new Error("Failed to create order");
       }
-
-      const data = await res.json();
       const createdId: string | undefined = data?.order?.id;
       if (createdId) {
         setOrderId(createdId);

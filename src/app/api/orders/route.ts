@@ -6,6 +6,10 @@ import { createOrder, listOrders, type OrderItem } from "../../../lib/orders-sto
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
 
+  if (!session?.user) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
   const body = await req.json().catch(() => null);
   if (!body || !Array.isArray(body.items) || typeof body.totalAmount !== "number") {
     return NextResponse.json({ error: "Invalid order payload" }, { status: 400 });
@@ -22,9 +26,10 @@ export async function POST(req: NextRequest) {
     totalAmount,
     totalCount,
     currency,
-    customer: session?.user
-      ? { name: session.user.name, email: session.user.email }
-      : undefined,
+    customer: {
+      name: session.user.name,
+      email: session.user.email,
+    },
     profile,
   });
 

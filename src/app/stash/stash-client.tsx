@@ -79,6 +79,15 @@ export default function StashClient() {
       });
 
       const data = await res.json().catch(() => null);
+
+      if (res.status === 401) {
+        try {
+          window.localStorage.setItem("stash_open_cart_after_login", "1");
+        } catch {}
+        router.push("/sign-in?callback=/stash");
+        return;
+      }
+
       if (!res.ok) {
         const message = (data as any)?.error || "Failed to create order";
         throw new Error(message);
