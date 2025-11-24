@@ -2,6 +2,18 @@ import { groq } from "next-sanity";
 
 export const homepageQuery = groq`*[_type == "homepage"][0]{
   title,
+  heroHeading,
+  heroSubheading,
+  heroShops[]{
+    _key,
+    id,
+    name,
+    title,
+    description,
+    href,
+    "imageUrl": image.asset->url,
+    "videoUrl": video.asset->url
+  },
   newIn[]->{
     _id,
     title,

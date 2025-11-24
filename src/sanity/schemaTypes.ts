@@ -112,6 +112,56 @@ export const homepageType = defineType({
   fields: [
     defineField({ name: "title", title: "Title", type: "string" }),
     defineField({
+      name: "heroHeading",
+      title: "Hero heading",
+      type: "string",
+    }),
+    defineField({
+      name: "heroSubheading",
+      title: "Hero subheading",
+      type: "text",
+      rows: 2,
+    }),
+    defineField({
+      name: "heroShops",
+      title: "Hero shop cards",
+      type: "array",
+      of: [
+        {
+          type: "object",
+          name: "heroShop",
+          title: "Hero shop",
+          fields: [
+            { name: "id", title: "ID (for anchors/tracking)", type: "string" },
+            { name: "name", title: "Label", type: "string" },
+            { name: "title", title: "Title", type: "string" },
+            {
+              name: "description",
+              title: "Description",
+              type: "text",
+              rows: 2,
+            },
+            {
+              name: "href",
+              title: "Link href or URL",
+              type: "string",
+            },
+            {
+              name: "image",
+              title: "Image (PNG, JPG, GIF etc.)",
+              type: "image",
+              options: { hotspot: true },
+            },
+            {
+              name: "video",
+              title: "Hover video (optional)",
+              type: "file",
+            },
+          ],
+        },
+      ],
+    }),
+    defineField({
       name: "newIn",
       title: "New in products",
       type: "array",

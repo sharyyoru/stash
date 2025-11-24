@@ -31,6 +31,59 @@ type Category = {
   imageSrc?: string;
 };
 
+type Shop = {
+  id: string;
+  name: string;
+  title: string;
+  description: string;
+  href: string;
+  imageSrc?: string;
+  videoSrc?: string;
+};
+
+const defaultHeroHeading = "Choose your next stop";
+const defaultHeroSubheading =
+  "Tap a shop to explore subscriptions, new drops, stickers or desk and lifestyle.";
+
+const defaultShops: Shop[] = [
+  {
+    id: "subscribe",
+    name: "Subscribe",
+    title: "Monthly Stash Box",
+    description: "Curated mix of stickers and stationery.",
+    imageSrc: "/media/shops/subscribe.png",
+    videoSrc: "/media/shops/subscribe.mp4",
+    href: "#",
+  },
+  {
+    id: "new",
+    name: "New Stuff",
+    title: "Just dropped",
+    description: "Fresh arrivals for your next desk reset.",
+    imageSrc: "/media/shops/new-stuff.png",
+    videoSrc: "/media/shops/new-stuff.mp4",
+    href: "#new-in",
+  },
+  {
+    id: "stickers",
+    name: "Stickers",
+    title: "Sticker street",
+    description: "Sheets, packs and washi-style stickers.",
+    imageSrc: "/media/shops/stickers.png",
+    videoSrc: "/media/shops/stickers.mp4",
+    href: "#categories",
+  },
+  {
+    id: "desk",
+    name: "Desk & Lifestyle",
+    title: "Desk and lifestyle",
+    description: "Mugs, totes and desk-side little things.",
+    imageSrc: "/media/shops/desk-lifestyle.png",
+    videoSrc: "/media/shops/desk-lifestyle.mp4",
+    href: "#categories",
+  },
+];
+
 const defaultCategories: Category[] = [
   {
     id: "1",
@@ -166,6 +219,16 @@ export default async function Home() {
     imageUrl: p.imageUrl,
   });
 
+  const mapCmsHeroShopToShop = (s: any): Shop => ({
+    id: s.id || s._key,
+    name: s.name || "",
+    title: s.title || "",
+    description: s.description || "",
+    href: s.href || "#",
+    imageSrc: s.imageUrl,
+    videoSrc: s.videoUrl,
+  });
+
   const cmsNewInFromHomepage =
     Array.isArray((homepage as any)?.newIn) && (homepage as any).newIn.length > 0
       ? (homepage as any).newIn.map(mapSanityProductToProduct)
@@ -226,10 +289,20 @@ export default async function Home() {
         }))
       : undefined;
 
+  const heroShopsFromCms =
+    Array.isArray((homepage as any)?.heroShops) && (homepage as any).heroShops.length > 0
+      ? (homepage as any).heroShops.map(mapCmsHeroShopToShop)
+      : null;
+
+  const heroHeading = (homepage as any)?.heroHeading || defaultHeroHeading;
+  const heroSubheading = (homepage as any)?.heroSubheading || defaultHeroSubheading;
+
+  const shopsToShow = heroShopsFromCms ?? defaultShops;
+
   return (
     <div className="bg-neutral-50">
       <div className="mx-auto max-w-6xl space-y-16 px-4 py-10">
-        <Hero />
+        <Hero heading={heroHeading} subheading={heroSubheading} shops={shopsToShow} />
         <CharacterStrip characters={charactersToShow} />
         <CategoryGrid categories={categoriesToShow} />
         <ProductSliderSection
@@ -252,42 +325,13 @@ export default async function Home() {
   );
 }
 
-function Hero() {
-  const shops = [
-    {
-      id: "subscribe",
-      name: "Subscribe",
-      title: "Monthly Stash Box",
-      description: "Curated mix of stickers and stationery.",
-      imageSrc: "/media/shops/subscribe.png",
-      videoSrc: "/media/shops/subscribe.mp4",
-    },
-    {
-      id: "new",
-      name: "New Stuff",
-      title: "Just dropped",
-      description: "Fresh arrivals for your next desk reset.",
-      imageSrc: "/media/shops/new-stuff.png",
-      videoSrc: "/media/shops/new-stuff.mp4",
-    },
-    {
-      id: "stickers",
-      name: "Stickers",
-      title: "Sticker street",
-      description: "Sheets, packs and washi-style stickers.",
-      imageSrc: "/media/shops/stickers.png",
-      videoSrc: "/media/shops/stickers.mp4",
-    },
-    {
-      id: "desk",
-      name: "Desk & Lifestyle",
-      title: "Desk and lifestyle",
-      description: "Mugs, totes and desk-side little things.",
-      imageSrc: "/media/shops/desk-lifestyle.png",
-      videoSrc: "/media/shops/desk-lifestyle.mp4",
-    },
-  ];
+type HeroProps = {
+  heading: string;
+  subheading: string;
+  shops: Shop[];
+};
 
+function Hero({ heading, subheading, shops }: HeroProps) {
   return (
     <section className="pt-4">
       <div className="relative overflow-hidden rounded-3xl border border-emerald-100 p-5 shadow-sm stash-hero-gradient">
@@ -298,55 +342,62 @@ function Hero() {
         <div className="relative mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.2em] text-neutral-900">
-              Choose your next stop
+              {heading}
             </p>
             <p className="mt-1 max-w-md text-xs text-neutral-600">
-              Tap a shop to explore subscriptions, new drops, stickers or desk and lifestyle.
+              {subheading}
             </p>
           </div>
         </div>
         <div className="relative grid gap-4 md:grid-cols-4">
-          {shops.map((shop) => (
-            <a
-              key={shop.id}
-              href={
-                shop.id === "new"
-                  ? "#new-in"
-                  : shop.id === "stickers" || shop.id === "desk"
-                  ? "#categories"
-                  : "#"
-              }
-              className="group relative flex flex-col justify-between rounded-2xl bg-white/90 p-4 text-left shadow-sm ring-1 ring-emerald-100 transition hover:-translate-y-1 hover:bg-white hover:shadow-md"
-            >
-              <div className="mb-3">
-                <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-neutral-100">
-                  {shop.imageSrc ? (
-                    <>
-                      <Image
-                        src={shop.imageSrc}
-                        alt={shop.title}
-                        fill
-                        className="h-full w-full object-cover transition-opacity duration-300 group-hover:opacity-0"
-                      />
-                      {shop.videoSrc && (
-                        <video
-                          className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-                          muted
-                          loop
-                          playsInline
-                          autoPlay
-                        >
-                          <source src={shop.videoSrc} type="video/mp4" />
-                        </video>
-                      )}
-                    </>
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-[11px] text-neutral-400">
-                      Visual coming soon
-                    </div>
-                  )}
+          {shops.map((shop) => {
+            const isGif =
+              typeof shop.imageSrc === "string" &&
+              shop.imageSrc.toLowerCase().includes(".gif");
+
+            return (
+              <a
+                key={shop.id}
+                href={shop.href}
+                className="group relative flex flex-col justify-between rounded-2xl bg-white/90 p-4 text-left shadow-sm ring-1 ring-emerald-100 transition hover:-translate-y-1 hover:bg-white hover:shadow-md"
+              >
+                <div className="mb-3">
+                  <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-neutral-100">
+                    {shop.imageSrc ? (
+                      <>
+                        {isGif ? (
+                          <img
+                            src={shop.imageSrc}
+                            alt={shop.title}
+                            className="h-full w-full object-cover transition-opacity duration-300 group-hover:opacity-0"
+                          />
+                        ) : (
+                          <Image
+                            src={shop.imageSrc}
+                            alt={shop.title}
+                            fill
+                            className="h-full w-full object-cover transition-opacity duration-300 group-hover:opacity-0"
+                          />
+                        )}
+                        {shop.videoSrc && (
+                          <video
+                            className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                            muted
+                            loop
+                            playsInline
+                            autoPlay
+                          >
+                            <source src={shop.videoSrc} type="video/mp4" />
+                          </video>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-[11px] text-neutral-400">
+                        Visual coming soon
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
               <div className="space-y-1">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
                   {shop.name}
@@ -359,8 +410,9 @@ function Hero() {
                   View
                 </span>
               </div>
-            </a>
-          ))}
+              </a>
+            );
+          })}
         </div>
       </div>
     </section>
