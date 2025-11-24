@@ -186,3 +186,22 @@ export const searchProductsQuery = groq`*[_type == "product" && (
   badges,
   "imageUrl": images[0].asset->url
 }`;
+
+export const allBlogPostsQuery = groq`*[_type == "blogPost"] | order(coalesce(publishedAt, _createdAt) desc){
+  _id,
+  title,
+  "slug": slug.current,
+  publishedAt,
+  excerpt,
+  "coverImageUrl": coverImage.asset->url
+}`;
+
+export const blogPostBySlugQuery = groq`*[_type == "blogPost" && slug.current == $slug][0]{
+  _id,
+  title,
+  "slug": slug.current,
+  publishedAt,
+  excerpt,
+  content,
+  "coverImageUrl": coverImage.asset->url
+}`;

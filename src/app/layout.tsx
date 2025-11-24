@@ -114,6 +114,7 @@ function SiteHeader({ searchSuggestions, session }: SiteHeaderProps) {
             <NavLink href="/category/stickers">Stickers</NavLink>
             <NavLink href="/category/stationery">Stationery</NavLink>
             <NavLink href="/category/bundles">Bundles</NavLink>
+            <NavLink href="/blog">Blog</NavLink>
           </nav>
         </div>
         <div className="flex items-center gap-2">

@@ -135,6 +135,44 @@ export const characterType = defineType({
   ],
 });
 
+export const blogPostType = defineType({
+  name: "blogPost",
+  title: "Blog Post",
+  type: "document",
+  fields: [
+    defineField({ name: "title", title: "Title", type: "string" }),
+    defineField({
+      name: "slug",
+      title: "Slug",
+      type: "slug",
+      options: { source: "title", maxLength: 96 },
+    }),
+    defineField({
+      name: "publishedAt",
+      title: "Published at",
+      type: "datetime",
+    }),
+    defineField({
+      name: "excerpt",
+      title: "Short excerpt",
+      type: "text",
+      rows: 3,
+    }),
+    defineField({
+      name: "coverImage",
+      title: "Cover image",
+      type: "image",
+      options: { hotspot: true },
+    }),
+    defineField({
+      name: "content",
+      title: "Content",
+      type: "array",
+      of: [{ type: "block" }],
+    }),
+  ],
+});
+
 export const homepageType = defineType({
   name: "homepage",
   title: "Homepage",
@@ -206,4 +244,10 @@ export const homepageType = defineType({
   ],
 });
 
-export const schemaTypes = [productType, categoryType, characterType, homepageType];
+export const schemaTypes = [
+  productType,
+  categoryType,
+  characterType,
+  blogPostType,
+  homepageType,
+];
