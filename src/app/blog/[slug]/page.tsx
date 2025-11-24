@@ -16,15 +16,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     notFound();
   }
 
-  const paragraphs = Array.isArray(post.content)
-    ? post.content
-        .map((block: any) => {
-          if (!Array.isArray(block.children)) return "";
-          return block.children.map((child: any) => child.text).join("");
-        })
-        .filter((text: string) => text && text.trim().length > 0)
-    : [];
-
   const dateLabel = post.publishedAt
     ? new Date(post.publishedAt).toLocaleDateString("en-US", {
         year: "numeric",
@@ -68,10 +59,59 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             Story
           </p>
           <div className="mt-3 space-y-3 text-sm leading-relaxed text-neutral-800">
-            {paragraphs.length > 0 ? (
-              paragraphs.map((text: string, index: number) => (
-                <p key={index}>{text}</p>
-              ))
+            {Array.isArray(post.content) && post.content.length > 0 ? (
+              post.content.map((block: any, blockIndex: number) => {
+                if (!Array.isArray(block.children)) return null;
+
+                const markDefs: any[] = Array.isArray(block.markDefs)
+                  ? block.markDefs
+                  : [];
+
+                const children = block.children
+                  .map((child: any, childIndex: number) => {
+                    const text: string = child?.text || "";
+                    if (!text) return null;
+
+                    const marks: string[] = Array.isArray(child.marks)
+                      ? child.marks
+                      : [];
+
+                    let node: React.ReactNode = text;
+
+                    for (const mark of marks) {
+                      if (mark === "strong") {
+                        node = <strong key={`${childIndex}-strong`}>{node}</strong>;
+                        continue;
+                      }
+                      if (mark === "em") {
+                        node = <em key={`${childIndex}-em`}>{node}</em>;
+                        continue;
+                      }
+
+                      const def = markDefs.find((d) => d?._key === mark);
+                      if (def && def._type === "link" && def.href) {
+                        node = (
+                          <a
+                            key={`${childIndex}-link`}
+                            href={def.href}
+                            className="text-[#b08968] underline hover:no-underline"
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {node}
+                          </a>
+                        );
+                      }
+                    }
+
+                    return <span key={child._key || childIndex}>{node}</span>;
+                  })
+                  .filter(Boolean);
+
+                if (children.length === 0) return null;
+
+                return <p key={block._key || blockIndex}>{children}</p>;
+              })
             ) : (
               <p>More details coming soon.</p>
             )}
