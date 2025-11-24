@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type ProductImage = {
   url?: string;
@@ -18,6 +18,10 @@ export default function ProductImageGallery({
 }: ProductImageGalleryProps) {
   const validImages = (images || []).filter((img) => img && img.url);
   const [selectedIndex, setSelectedIndex] = useState(0);
+
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [images]);
 
   const mainImage = validImages[selectedIndex] ?? null;
 

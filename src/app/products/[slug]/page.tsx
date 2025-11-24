@@ -1,9 +1,7 @@
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { sanityClient } from "../../../sanity/client";
 import { productBySlugQuery } from "../../../sanity/queries";
-import ProductImageGallery from "../../../components/product-image-gallery";
-import ProductAddToStash from "../../../components/product-add-to-stash";
+import ProductTopSection from "../../../components/product-top-section";
 
 type ProductPageProps = {
   params: Promise<{ slug: string }>;
@@ -22,67 +20,30 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   const images = Array.isArray(product.images) ? product.images : [];
   const mainImageUrl = images[0]?.url as string | undefined;
+  const variants = Array.isArray(product.variants)
+    ? (product.variants as any[]).map((v) => ({
+        id: v._key,
+        name: v.name,
+        price: v.price,
+        images: Array.isArray(v.images) ? v.images : [],
+      }))
+    : [];
 
   return (
     <div className="bg-neutral-50">
       <div className="mx-auto max-w-6xl px-4 py-10 space-y-10">
-        <div className="grid gap-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:items-start">
-          <ProductImageGallery images={images} alt={product.title} />
-
-          <div className="space-y-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-neutral-500">
-              {product.category || "Product"}
-            </p>
-            <h1 className="text-xl font-semibold text-neutral-900">
-              {product.title}
-            </h1>
-            {Array.isArray(product.badges) && product.badges.length > 0 && (
-              <div className="flex flex-wrap gap-2 text-[11px]">
-                {product.badges.map((badge: string) => {
-                  const normalized = badge.toLowerCase().replace(/[^a-z]/g, "");
-                  const isBestSeller = normalized === "bestseller";
-                  const isWaterproof = normalized === "waterproof";
-                  const base = "rounded-full px-2 py-0.5 font-semibold";
-                  const classes = isBestSeller
-                    ? `${base} border border-neutral-200 stash-rainbow-badge`
-                    : isWaterproof
-                    ? `${base} stash-water-badge text-white`
-                    : `${base} bg-neutral-900 text-white`;
-                  return (
-                    <span
-                      key={badge}
-                      className={classes}
-                    >
-                      {badge}
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-
-            <p className="text-lg font-semibold text-neutral-900">
-              {product.currency || "AED"} {product.price}
-            </p>
-
-            {product.shortDescription && (
-              <p className="text-sm text-neutral-700">
-                {product.shortDescription}
-              </p>
-            )}
-
-            <ProductAddToStash
-              id={product._id}
-              title={product.title}
-              slug={product.slug}
-              priceText={`${product.currency || "AED"} ${product.price ?? ""}`}
-              imageUrl={mainImageUrl}
-            />
-
-            <p className="text-xs text-neutral-500">
-              Ships from Dubai. Taxes and shipping calculated at checkout.
-            </p>
-          </div>
-        </div>
+        <ProductTopSection
+          id={product._id}
+          title={product.title}
+          slug={product.slug}
+          category={product.category}
+          badges={Array.isArray(product.badges) ? product.badges : []}
+          shortDescription={product.shortDescription}
+          currency={product.currency}
+          price={product.price}
+          images={images}
+          variants={variants}
+        />
 
         <section className="grid gap-4 md:grid-cols-2">
           <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-neutral-100">

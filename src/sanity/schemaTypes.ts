@@ -34,6 +34,36 @@ export const productType = defineType({
       of: [{ type: "image", options: { hotspot: true } }],
     }),
     defineField({
+      name: "variants",
+      title: "Variants",
+      type: "array",
+      of: [
+        {
+          type: "object",
+          name: "variant",
+          title: "Variant",
+          fields: [
+            {
+              name: "name",
+              title: "Variant name",
+              type: "string",
+            },
+            {
+              name: "price",
+              title: "Price (override)",
+              type: "number",
+            },
+            {
+              name: "images",
+              title: "Variant images",
+              type: "array",
+              of: [{ type: "image", options: { hotspot: true } }],
+            },
+          ],
+        },
+      ],
+    }),
+    defineField({
       name: "shortDescription",
       title: "Short description",
       type: "text",
