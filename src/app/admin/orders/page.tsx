@@ -11,6 +11,7 @@ import {
 } from "../../../lib/orders-store";
 import CopyableText from "../../../components/copyable-text";
 import OrderProofUpload from "../../../components/order-proof-upload";
+import CreateShipmentButton from "../../../components/create-shipment-button";
 
 function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false;
@@ -22,14 +23,17 @@ function isAdminEmail(email: string | null | undefined): boolean {
 const statusOptions: { value: OrderStatus; label: string }[] = [
   { value: "payment-pending", label: "Payment pending" },
   { value: "paid", label: "Paid" },
+  { value: "processing", label: "Processing" },
   { value: "in-transit", label: "In transit" },
   { value: "delivered", label: "Delivered" },
+  { value: "cancelled", label: "Cancelled" },
 ];
 
 const filterTabs: { value: "all" | OrderStatus; label: string }[] = [
   { value: "all", label: "All" },
   { value: "payment-pending", label: "Payment pending" },
   { value: "paid", label: "Paid" },
+  { value: "processing", label: "Processing" },
   { value: "in-transit", label: "In transit" },
   { value: "delivered", label: "Delivered" },
 ];
@@ -86,6 +90,7 @@ export default async function AdminOrdersPage({
   if (
     rawStatus === "payment-pending" ||
     rawStatus === "paid" ||
+    rawStatus === "processing" ||
     rawStatus === "in-transit" ||
     rawStatus === "delivered"
   ) {
@@ -269,6 +274,20 @@ export default async function AdminOrdersPage({
                       )}
                     </div>
                   )}
+
+                  {/* Shipping Section */}
+                  <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-neutral-100 pt-3">
+                    <CreateShipmentButton
+                      orderId={order.id}
+                      orderStatus={order.status}
+                      existingAwb={order.awbNumber}
+                    />
+                    {order.shippingStatus && (
+                      <span className="text-[11px] text-neutral-500">
+                        Shipping: {order.shippingStatus}
+                      </span>
+                    )}
+                  </div>
 
                   <OrderProofUpload orderId={order.id} proofUrl={order.proofUrl} />
                 </div>

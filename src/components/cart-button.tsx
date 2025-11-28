@@ -87,7 +87,8 @@ export default function CartButton({ label }: CartButtonProps) {
     }
 
     try {
-      const res = await fetch("/api/orders", {
+      // Use the new checkout API that creates a Ziina payment intent
+      const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -111,15 +112,32 @@ export default function CartButton({ label }: CartButtonProps) {
       }
 
       if (!res.ok) {
-        throw new Error("Failed to create order");
+        // Check if it's a payment gateway configuration error
+        if (res.status === 503) {
+          throw new Error(data?.error || "Payment gateway not available");
+        }
+        throw new Error(data?.error || "Failed to create checkout");
       }
+
       const createdId: string | undefined = data?.order?.id;
+      const redirectUrl: string | undefined = data?.redirectUrl;
+
       if (createdId) {
         setOrderId(createdId);
       }
+
+      // If we have a redirect URL from Ziina, redirect to payment page
+      if (redirectUrl) {
+        clear();
+        window.location.href = redirectUrl;
+        return;
+      }
+
+      // Fallback: order created but no payment redirect (Ziina not configured)
       clear();
-    } catch (error) {
-      setCheckoutError("Could not create order. Please try again.");
+      setCheckoutError("Order created. Payment gateway is being set up - we'll contact you.");
+    } catch (error: any) {
+      setCheckoutError(error?.message || "Could not create order. Please try again.");
     } finally {
       setIsCheckingOut(false);
     }

@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "./supabase-admin";
 
-export type OrderStatus = "payment-pending" | "paid" | "in-transit" | "delivered";
+export type OrderStatus = "payment-pending" | "paid" | "processing" | "in-transit" | "delivered" | "cancelled";
 
 export type OrderItem = {
   id: string;
@@ -27,6 +27,12 @@ export type Order = {
   totalAmount: number;
   currency: string;
   proofUrl?: string;
+  // Ziina payment fields
+  paymentIntentId?: string;
+  paymentStatus?: string;
+  // Jeebly shipping fields
+  awbNumber?: string;
+  shippingStatus?: string;
 };
 
 function generateOrderId(): string {
@@ -49,6 +55,10 @@ function mapRowToOrder(row: any): Order {
     totalAmount: Number(row.total_amount ?? 0),
     currency: row.currency || "AED",
     proofUrl: row.proof_url ?? undefined,
+    paymentIntentId: row.payment_intent_id ?? undefined,
+    paymentStatus: row.payment_status ?? undefined,
+    awbNumber: row.awb_number ?? undefined,
+    shippingStatus: row.shipping_status ?? undefined,
   };
 }
 
@@ -147,4 +157,95 @@ export async function deleteOrder(id: string): Promise<boolean> {
 
   if (error) return false;
   return true;
+}
+
+export async function setPaymentIntent(
+  id: string,
+  paymentIntentId: string,
+): Promise<Order | null> {
+  const { data, error } = await supabaseAdmin
+    .from("orders")
+    .update({ payment_intent_id: paymentIntentId })
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return mapRowToOrder(data);
+}
+
+export async function updatePaymentStatus(
+  id: string,
+  paymentStatus: string,
+  orderStatus?: OrderStatus,
+): Promise<Order | null> {
+  const updateData: Record<string, any> = { payment_status: paymentStatus };
+  if (orderStatus) {
+    updateData.status = orderStatus;
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("orders")
+    .update(updateData)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return mapRowToOrder(data);
+}
+
+export async function getOrderByPaymentIntent(
+  paymentIntentId: string,
+): Promise<Order | undefined> {
+  const { data, error } = await supabaseAdmin
+    .from("orders")
+    .select("*")
+    .eq("payment_intent_id", paymentIntentId)
+    .maybeSingle();
+
+  if (error || !data) return undefined;
+  return mapRowToOrder(data);
+}
+
+export async function setAwbNumber(
+  id: string,
+  awbNumber: string,
+  shippingStatus?: string,
+): Promise<Order | null> {
+  const updateData: Record<string, any> = { awb_number: awbNumber };
+  if (shippingStatus) {
+    updateData.shipping_status = shippingStatus;
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("orders")
+    .update(updateData)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return mapRowToOrder(data);
+}
+
+export async function updateShippingStatus(
+  id: string,
+  shippingStatus: string,
+  orderStatus?: OrderStatus,
+): Promise<Order | null> {
+  const updateData: Record<string, any> = { shipping_status: shippingStatus };
+  if (orderStatus) {
+    updateData.status = orderStatus;
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("orders")
+    .update(updateData)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return mapRowToOrder(data);
 }
