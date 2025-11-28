@@ -53,11 +53,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Get customer profile/address from order
-    const profile = order.profile;
-    if (!profile || !profile.city || !profile.mobile) {
+    const profile = (order.profile || {}) as any;
+    const hasLine1 = typeof profile.line1 === "string" && profile.line1.trim().length > 0;
+    const hasMobile = typeof profile.mobile === "string" && profile.mobile.trim().length >= 7;
+
+    if (!hasLine1 || !hasMobile) {
       return NextResponse.json(
-        { error: "Customer address is incomplete" },
-        { status: 400 }
+        {
+          error:
+            "Customer address is incomplete. Please ensure address line 1 and mobile number are saved before checkout.",
+        },
+        { status: 400 },
       );
     }
 
@@ -82,12 +88,12 @@ export async function POST(req: NextRequest) {
       
       // Customer destination address
       destinationName: order.customer?.name || profile.line1 || "Customer",
-      destinationMobile: profile.mobile.replace(/\D/g, ""),
+      destinationMobile: String(profile.mobile || "").replace(/\D/g, ""),
       destinationHouseNo: profile.line1 || "",
       destinationBuildingName: profile.line2 || profile.line1 || "",
-      destinationArea: profile.state || profile.city || "",
+      destinationArea: profile.state || profile.city || "Dubai",
       destinationLandmark: "",
-      destinationCity: profile.city || "Dubai",
+      destinationCity: profile.city || profile.state || "Dubai",
     });
 
     const awbNumber = shipmentResult["AWB No"];
