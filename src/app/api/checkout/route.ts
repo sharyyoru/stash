@@ -43,8 +43,7 @@ export async function POST(req: NextRequest) {
     const failureUrl = `${baseUrl}/checkout/failed?order_id=${order.id}`;
 
     // 3. Create Ziina payment intent
-    const itemsSummary = items.map(i => `${i.title} x${i.quantity}`).join(", ");
-    const message = `Stash Order ${order.id}: ${itemsSummary}`.substring(0, 200);
+    const message = `Stash order ${order.id} - ${currency} ${totalAmount.toFixed(2)}`.slice(0, 80);
 
     const paymentIntent = await createPaymentIntent({
       amount: toBaseUnits(totalAmount),
