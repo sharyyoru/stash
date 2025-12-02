@@ -172,6 +172,20 @@ export const bestSellerProductsQuery = groq`*[_type == "product" && ("Best-Selle
   "imageUrl": images[0].asset->url
 }`;
 
+export const stickerBadgeProductsQuery = groq`*[_type == "product" && "Sticker" in badges] | order(_createdAt desc){
+  _id,
+  title,
+  "slug": slug.current,
+  price,
+  currency,
+  shortDescription,
+  "category": category->title,
+  badges,
+  "characterName": character->title,
+  "characterSlug": character->slug.current,
+  "imageUrl": images[0].asset->url
+}`;
+
 export const recommendedProductsByCategoryQuery = groq`*[_type == "product" && category->slug.current == $categorySlug && slug.current != $currentSlug] | order(random())[0...10]{
   _id,
   title,

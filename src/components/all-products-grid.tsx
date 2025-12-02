@@ -22,11 +22,13 @@ type ProductSummary = {
 type AllProductsGridProps = {
   products: ProductSummary[];
   showBadgeFilter?: boolean;
+  showCategoryFilter?: boolean;
 };
 
 export default function AllProductsGrid({
   products,
   showBadgeFilter = true,
+  showCategoryFilter = true,
 }: AllProductsGridProps) {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [badgeFilter, setBadgeFilter] = useState<string>("all");
@@ -127,23 +129,25 @@ export default function AllProductsGrid({
       <div className="flex flex-col gap-4 rounded-3xl bg-white p-4 shadow-sm ring-1 ring-neutral-100 md:flex-row md:flex-wrap md:items-end md:justify-between">
         <div className="space-y-2 text-sm">
           <div className="flex flex-wrap gap-3">
-            <div className="space-y-1 min-w-[140px]">
-              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-neutral-500">
-                Category
-              </p>
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="stash-select h-9 rounded-full border border-neutral-200 bg-white px-3 text-xs text-neutral-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-300"
-              >
-                <option value="all">All categories</option>
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {showCategoryFilter && (
+              <div className="space-y-1 min-w-[140px]">
+                <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-neutral-500">
+                  Category
+                </p>
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="stash-select h-9 rounded-full border border-neutral-200 bg-white px-3 text-xs text-neutral-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-300"
+                >
+                  <option value="all">All categories</option>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {showBadgeFilter && (
               <div className="space-y-1 min-w-[140px]">
