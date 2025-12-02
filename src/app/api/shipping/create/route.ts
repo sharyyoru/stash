@@ -1,10 +1,90 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { groq } from "next-sanity";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { getOrder, setAwbNumber, updateOrderStatus } from "../../../../lib/orders-store";
 import { createShipment, getNextBusinessDay } from "../../../../lib/jeebly";
+import { sanityClient } from "../../../../sanity/client";
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase());
+
+async function calculateOrderWeightKg(order: any): Promise<number> {
+  try {
+    const items = Array.isArray(order.items) ? order.items : [];
+    const baseIds = Array.from(
+      new Set(
+        items
+          .map((item: any) =>
+            typeof item.id === "string" ? item.id.split("::")[0] : item.id,
+          )
+          .filter(Boolean),
+      ),
+    ) as string[];
+
+    if (baseIds.length === 0) {
+      return 0.5;
+    }
+
+    const products: any[] = await sanityClient.fetch(
+      groq`*[_type == "product" && _id in $ids]{
+        _id,
+        shippingWeight,
+        category->{ defaultShippingWeight }
+      }`,
+      { ids: baseIds },
+    );
+
+    const weightById = new Map<string, number>();
+    for (const p of products) {
+      const productWeight =
+        typeof p.shippingWeight === "number" && p.shippingWeight > 0
+          ? p.shippingWeight
+          : undefined;
+      const categoryWeight =
+        typeof p.category?.defaultShippingWeight === "number" &&
+        p.category.defaultShippingWeight > 0
+          ? p.category.defaultShippingWeight
+          : undefined;
+      const effective = productWeight ?? categoryWeight;
+      if (effective && effective > 0) {
+        weightById.set(p._id, effective);
+      }
+    }
+
+    let total = 0;
+    let fallbackPieces = 0;
+    for (const item of items) {
+      const baseId =
+        typeof item.id === "string" ? item.id.split("::")[0] : item.id;
+      const qty = typeof item.quantity === "number" && item.quantity > 0 ? item.quantity : 1;
+      const perUnit = weightById.get(baseId) ?? 0;
+      if (perUnit > 0) {
+        total += perUnit * qty;
+      } else {
+        fallbackPieces += qty;
+      }
+    }
+
+    // Fallback: assume 0.2kg per piece where no weight is defined
+    if (fallbackPieces > 0) {
+      total += fallbackPieces * 0.2;
+    }
+
+    // Ensure within sensible bounds for Jeebly
+    if (!Number.isFinite(total) || total <= 0) {
+      total = 0.5;
+    }
+
+    return Math.min(total, 50);
+  } catch {
+    const items = Array.isArray(order.items) ? order.items : [];
+    const numPieces = items.reduce(
+      (sum: number, item: any) => sum + (typeof item.quantity === "number" ? item.quantity : 1),
+      0,
+    );
+    return Math.max(0.5, numPieces * 0.2);
+  }
+}
 
 /**
  * Create a Jeebly shipment for an order
@@ -76,11 +156,14 @@ export async function POST(req: NextRequest) {
     // Calculate total pieces
     const numPieces = order.items.reduce((sum, item) => sum + item.quantity, 0);
 
+    // Calculate total shipment weight (kg) from product/category settings
+    const totalWeightKg = await calculateOrderWeightKg(order);
+
     // Create shipment with Jeebly
     const shipmentResult = await createShipment({
       deliveryType: deliveryType as "Same Day" | "Next Day",
       description,
-      weight: Math.max(0.5, numPieces * 0.2), // Estimate weight
+      weight: totalWeightKg,
       paymentType: "prepaid", // Already paid via Ziina
       numPieces,
       customerReferenceNumber: order.id,

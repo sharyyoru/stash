@@ -32,7 +32,8 @@ export default function ProductSliderSection({
 }: ProductSliderSectionProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const isBestSellers = sectionId === "best-sellers";
-  const visibleProducts = products.slice(0, 8);
+  const isRecommended = sectionId === "recommended";
+  const visibleProducts = isRecommended ? products.slice(0, 10) : products.slice(0, 8);
   const viewAllHref =
     sectionId === "new-in"
       ? "/just-landed"

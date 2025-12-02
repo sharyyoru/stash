@@ -47,6 +47,7 @@ export const productBySlugQuery = groq`*[_type == "product" && slug.current == $
   shortDescription,
   longDescription,
   "category": category->title,
+  "categorySlug": category->slug.current,
   badges,
   images[]{
     "url": asset->url
@@ -158,6 +159,20 @@ export const latestProductsQuery = groq`*[_type == "product"] | order(_createdAt
 }`;
 
 export const bestSellerProductsQuery = groq`*[_type == "product" && ("Best-Seller" in badges || "Bestseller" in badges || "Best Seller" in badges)] | order(_createdAt desc)[0...16]{
+  _id,
+  title,
+  "slug": slug.current,
+  price,
+  currency,
+  shortDescription,
+  "category": category->title,
+  badges,
+  "characterName": character->title,
+  "characterSlug": character->slug.current,
+  "imageUrl": images[0].asset->url
+}`;
+
+export const recommendedProductsByCategoryQuery = groq`*[_type == "product" && category->slug.current == $categorySlug && slug.current != $currentSlug] | order(random())[0...10]{
   _id,
   title,
   "slug": slug.current,

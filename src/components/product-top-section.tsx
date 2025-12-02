@@ -26,6 +26,7 @@ type ProductTopSectionProps = {
   price?: number;
   images: ProductImage[];
   variants?: VariantOption[];
+  descriptionParagraphs?: string[];
 };
 
 export default function ProductTopSection({
@@ -39,6 +40,7 @@ export default function ProductTopSection({
   price,
   images,
   variants,
+  descriptionParagraphs,
 }: ProductTopSectionProps) {
   const hasVariants = Array.isArray(variants) && variants.length > 0;
   const initialVariant = hasVariants ? variants![0] : null;
@@ -103,6 +105,20 @@ export default function ProductTopSection({
         <p className="text-xs text-neutral-500">
           Ships from Dubai. Taxes and shipping calculated at checkout.
         </p>
+
+        {Array.isArray(descriptionParagraphs) &&
+          descriptionParagraphs.length > 0 && (
+            <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-neutral-100">
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-neutral-500">
+                Description
+              </p>
+              <div className="mt-3 space-y-2 text-sm text-neutral-700">
+                {descriptionParagraphs.map((text, index) => (
+                  <p key={index}>{text}</p>
+                ))}
+              </div>
+            </div>
+          )}
       </div>
     </div>
   );

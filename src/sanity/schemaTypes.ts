@@ -9,6 +9,13 @@ export const productType = defineType({
     defineField({ name: "slug", title: "Slug", type: "slug", options: { source: "title", maxLength: 96 } }),
     defineField({ name: "price", title: "Price", type: "number" }),
     defineField({
+      name: "shippingWeight",
+      title: "Shipping weight (kg)",
+      type: "number",
+      description:
+        "Used for Jeebly shipments. Example: 0.15 for 150g. If not set, the category default is used.",
+    }),
+    defineField({
       name: "currency",
       title: "Currency",
       type: "string",
@@ -103,6 +110,13 @@ export const categoryType = defineType({
       name: "tone",
       title: "Tone (Tailwind gradient classes)",
       type: "string",
+    }),
+    defineField({
+      name: "defaultShippingWeight",
+      title: "Default shipping weight (kg)",
+      type: "number",
+      description:
+        "Fallback weight per product in this category if the product's shipping weight is not set.",
     }),
   ],
 });
