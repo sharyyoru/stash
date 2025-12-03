@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { uploadCustomImage } from "../lib/supabase";
 
@@ -19,6 +20,9 @@ type CustomizeModalProps = {
   productImageUrl?: string;
 };
 
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+const ALLOWED_EXTENSIONS = "JPG, PNG, GIF, WEBP";
+
 export default function CustomizeModal({
   open,
   onClose,
@@ -31,16 +35,24 @@ export default function CustomizeModal({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Mount check for portal
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     // Validate file type
-    if (!file.type.startsWith("image/")) {
-      setError("Please select an image file");
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setError(`Please select a valid image file (${ALLOWED_EXTENSIONS})`);
       return;
     }
 
@@ -78,6 +90,7 @@ export default function CustomizeModal({
     }
 
     setIsUploading(true);
+    setUploadProgress(0);
     setError(null);
 
     try {
@@ -85,12 +98,29 @@ export default function CustomizeModal({
 
       // Upload image if selected
       if (selectedFile) {
+        // Simulate progress for better UX
+        const progressInterval = setInterval(() => {
+          setUploadProgress((prev) => {
+            if (prev >= 90) {
+              clearInterval(progressInterval);
+              return 90;
+            }
+            return prev + 10;
+          });
+        }, 100);
+
         imageData = await uploadCustomImage(selectedFile, productId);
+        
+        clearInterval(progressInterval);
+        
         if (!imageData) {
+          setUploadProgress(0);
           setError("Failed to upload image. Please try again.");
           setIsUploading(false);
           return;
         }
+        
+        setUploadProgress(100);
       }
 
       // Call onConfirm with customization data
@@ -104,20 +134,24 @@ export default function CustomizeModal({
       setCustomText("");
       setSelectedFile(null);
       setPreviewUrl(null);
+      setUploadProgress(0);
       onClose();
     } catch (err) {
       console.error("Error submitting customization:", err);
       setError("Something went wrong. Please try again.");
+      setUploadProgress(0);
     } finally {
       setIsUploading(false);
     }
   };
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4">
-      <div className="relative w-full sm:max-w-lg overflow-hidden rounded-t-3xl sm:rounded-3xl bg-white p-4 sm:p-6 shadow-lg ring-1 ring-neutral-200 max-h-[95vh] sm:max-h-[85vh] overflow-y-auto">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 px-4">
+      {/* Backdrop click to close */}
+      <div className="absolute inset-0" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-lg overflow-hidden rounded-3xl bg-white p-4 sm:p-6 shadow-xl ring-1 ring-neutral-200 max-h-[90vh] overflow-y-auto">
         {/* Close button */}
         <button
           type="button"
@@ -175,6 +209,8 @@ export default function CustomizeModal({
             </label>
             <p className="text-[11px] text-neutral-500">
               Upload an image to help us understand your vision. Max 5MB.
+              <br />
+              <span className="text-neutral-400">Accepted formats: {ALLOWED_EXTENSIONS}</span>
             </p>
 
             {previewUrl ? (
@@ -221,11 +257,27 @@ export default function CustomizeModal({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept=".jpg,.jpeg,.png,.gif,.webp"
               onChange={handleFileChange}
               className="hidden"
             />
           </div>
+
+          {/* Upload progress bar */}
+          {isUploading && selectedFile && (
+            <div className="space-y-1">
+              <div className="flex justify-between text-[11px] text-neutral-600">
+                <span>Uploading image...</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200">
+                <div
+                  className="h-full bg-[#f3b560] transition-all duration-200"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Error message */}
           {error && (
@@ -255,4 +307,6 @@ export default function CustomizeModal({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

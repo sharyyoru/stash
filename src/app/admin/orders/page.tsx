@@ -240,13 +240,47 @@ export default async function AdminOrdersPage({
                     </p>
                   </div>
 
-                  <div className="mt-2 space-y-1 text-xs text-neutral-600">
-                    {order.items.map((item) => (
-                      <div key={item.id} className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-medium text-neutral-900">{item.title}</span>
-                        <span>
-                          {item.priceText || `${order.currency} ${item.price ?? ""}`} × {item.quantity}
-                        </span>
+                  <div className="mt-2 space-y-2 text-xs text-neutral-600">
+                    {order.items.map((item: any) => (
+                      <div key={item.id} className="space-y-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-medium text-neutral-900">
+                            {item.title}
+                            {item.customization && (
+                              <span className="ml-1 text-[10px] font-semibold text-[#b08968]">(CUSTOM)</span>
+                            )}
+                          </span>
+                          <span>
+                            {item.priceText || `${order.currency} ${item.price ?? ""}`} × {item.quantity}
+                          </span>
+                        </div>
+                        {/* Customization details */}
+                        {item.customization && (
+                          <div className="ml-2 rounded-xl border border-amber-200 bg-amber-50 p-2 space-y-1.5">
+                            <p className="text-[11px] font-medium text-amber-800">
+                              Customization Request:
+                            </p>
+                            <p className="text-[11px] text-neutral-700 whitespace-pre-wrap">
+                              {item.customization.text}
+                            </p>
+                            {item.customization.imageUrl && (
+                              <div className="pt-1">
+                                <p className="text-[10px] font-medium text-amber-700 mb-1">Reference Image:</p>
+                                <a
+                                  href={item.customization.imageUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-white px-2 py-1 text-[10px] font-medium text-amber-800 shadow-sm transition hover:bg-amber-50"
+                                >
+                                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  </svg>
+                                  View Image
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
