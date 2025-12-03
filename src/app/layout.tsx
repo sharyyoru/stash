@@ -113,6 +113,7 @@ function SiteHeader({ searchSuggestions, session }: SiteHeaderProps) {
           <nav className="hidden items-center gap-6 text-sm font-medium text-neutral-700 md:flex">
             <NavLink href="/just-landed">New in</NavLink>
             <NavLink href="/category/stickers">Stickers</NavLink>
+            <NavLink href="/category/lifestyle">Lifestyle</NavLink>
             <NavLink href="/category/stationery">Stationery</NavLink>
             <NavLink href="/category/bundles">Bundles</NavLink>
             <NavLink href="/blog">Blog</NavLink>

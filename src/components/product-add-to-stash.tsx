@@ -17,6 +17,7 @@ type ProductAddToStashProps = {
   priceText?: string;
   imageUrl?: string;
   currency?: string;
+  badges?: string[];
   variants?: VariantOption[];
   onVariantChange?: (variant: VariantOption | null) => void;
 };
@@ -28,6 +29,7 @@ export default function ProductAddToStash({
   priceText,
   imageUrl,
   currency,
+  badges,
   variants,
   onVariantChange,
 }: ProductAddToStashProps) {
@@ -125,10 +127,14 @@ export default function ProductAddToStash({
           slug={slug}
           priceText={computedPriceText}
           imageUrl={effectiveImageUrl}
+          badges={badges}
           quantity={quantity}
-          className="inline-flex flex-1 items-center justify-center rounded-full bg-neutral-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-neutral-800"
+          className={badges?.some(b => b.toLowerCase().replace(/[^a-z]/g, '') === 'customize')
+            ? "inline-flex flex-1 items-center justify-center rounded-full bg-[#f3b560] px-4 py-2 text-sm font-semibold text-neutral-900 shadow-sm transition hover:bg-[#e9a946]"
+            : "inline-flex flex-1 items-center justify-center rounded-full bg-neutral-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-neutral-800"
+          }
         >
-          Add to stash
+          {badges?.some(b => b.toLowerCase().replace(/[^a-z]/g, '') === 'customize') ? 'Customize & Add' : 'Add to stash'}
         </AddToStashButton>
       </div>
     </div>

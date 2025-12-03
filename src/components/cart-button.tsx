@@ -232,13 +232,23 @@ export default function CartButton({ label }: CartButtonProps) {
                           </div>
                         )}
                       </div>
-                      <div className="flex-1 truncate">
+                      <div className="flex-1 min-w-0">
                         <p className="truncate text-xs font-semibold text-neutral-900">
                           {item.title}
+                          {item.customization && (
+                            <span className="ml-1 text-[10px] font-medium text-[#b08968]">
+                              (Custom)
+                            </span>
+                          )}
                         </p>
                         {item.priceText && (
                           <p className="text-[11px] text-neutral-600">
                             {item.priceText}
+                          </p>
+                        )}
+                        {item.customization && (
+                          <p className="text-[10px] text-neutral-500 truncate mt-0.5">
+                            "{item.customization.text.slice(0, 30)}{item.customization.text.length > 30 ? '...' : ''}"
                           </p>
                         )}
                         <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-white px-2 py-1 text-[11px] text-neutral-700 shadow-sm">

@@ -8,6 +8,12 @@ import {
   useState,
 } from "react";
 
+export type CustomizationData = {
+  text: string;
+  imageUrl?: string;
+  imagePath?: string;
+};
+
 export type CartItem = {
   id: string;
   title: string;
@@ -17,6 +23,7 @@ export type CartItem = {
   currency?: string;
   imageUrl?: string;
   quantity: number;
+  customization?: CustomizationData;
 };
 
 const STORAGE_KEY = "stash_cart_v1";
@@ -79,10 +86,28 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const addItem: CartContextValue["addItem"] = (item, quantity = 1) => {
     if (!item.id || quantity <= 0) return;
     setItems((current) => {
-      const existing = current.find((i) => i.id === item.id);
+      // If item has customization, create a unique ID for it so each customized item is separate
+      const itemId = item.customization 
+        ? `${item.id}::custom::${Date.now()}`
+        : item.id;
+      
+      // For customized items, always add as new entry
+      if (item.customization) {
+        return [
+          ...current,
+          {
+            ...item,
+            id: itemId,
+            quantity,
+          },
+        ];
+      }
+      
+      // For regular items, check if already exists
+      const existing = current.find((i) => i.id === item.id && !i.customization);
       if (existing) {
         return current.map((i) =>
-          i.id === item.id ? { ...i, quantity: i.quantity + quantity } : i,
+          i.id === item.id && !i.customization ? { ...i, quantity: i.quantity + quantity } : i,
         );
       }
       return [

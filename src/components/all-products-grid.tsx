@@ -298,6 +298,7 @@ export default function AllProductsGrid({
                   slug={product.slug}
                   priceText={`${product.currency || "AED"} ${product.price ?? ""}`}
                   imageUrl={product.imageUrl}
+                  badges={product.badges}
                 />
               </div>
             </div>

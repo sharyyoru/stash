@@ -7,6 +7,7 @@ import {
   categoryBySlugQuery,
   productsByCategoryQuery,
   stickerBadgeProductsQuery,
+  lifestyleBadgeProductsQuery,
 } from "../../../sanity/queries";
 
 interface CategoryPageProps {
@@ -17,12 +18,18 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   const { slug } = await params;
 
   const isStickers = slug === "stickers";
+  const isLifestyle = slug === "lifestyle";
+  const isBadgePage = isStickers || isLifestyle;
+
+  const getProductsQuery = () => {
+    if (isStickers) return sanityClient.fetch(stickerBadgeProductsQuery);
+    if (isLifestyle) return sanityClient.fetch(lifestyleBadgeProductsQuery);
+    return sanityClient.fetch(productsByCategoryQuery, { slug });
+  };
 
   const [category, products] = await Promise.all([
     sanityClient.fetch(categoryBySlugQuery, { slug }).catch(() => null),
-    isStickers
-      ? sanityClient.fetch(stickerBadgeProductsQuery).catch(() => [])
-      : sanityClient.fetch(productsByCategoryQuery, { slug }).catch(() => []),
+    getProductsQuery().catch(() => []),
   ]);
 
   const safeCategory =
@@ -30,7 +37,13 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     (isStickers
       ? {
           title: "Stickers",
-          description: 'All products tagged with the "Stickers" badge.',
+          description: 'All products tagged with the "Sticker" badge.',
+          heroImageUrl: null,
+        }
+      : isLifestyle
+      ? {
+          title: "Lifestyle",
+          description: 'All products tagged with the "Lifestyle" badge.',
           heroImageUrl: null,
         }
       : null);
@@ -47,7 +60,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
         <div className="grid gap-6 md:grid-cols-[1.3fr,1fr] items-center">
           <div className="space-y-3">
             <p className="text-xs font-medium uppercase tracking-[0.2em] text-neutral-500">
-              {isStickers ? "Collection" : "Category"}
+              {isBadgePage ? "Collection" : "Category"}
             </p>
             <h1 className="text-xl font-semibold text-neutral-900">{safeCategory.title}</h1>
             {safeCategory.description && (
@@ -79,12 +92,12 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                 Products
               </p>
               <h2 className="mt-2 text-lg font-semibold tracking-tight text-neutral-900">
-                {safeProducts.length} {isStickers ? "sticker items" : `items in ${safeCategory.title}`}
+                {safeProducts.length} {isBadgePage ? `${safeCategory.title.toLowerCase()} items` : `items in ${safeCategory.title}`}
               </h2>
             </div>
           </div>
 
-          {isStickers ? (
+          {isBadgePage ? (
             <AllProductsGrid
               products={safeProducts as any[]}
               showBadgeFilter={false}

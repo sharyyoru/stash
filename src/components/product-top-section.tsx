@@ -98,6 +98,7 @@ export default function ProductTopSection({
           priceText={basePriceText}
           imageUrl={imagesForGallery[0]?.url}
           currency={currency}
+          badges={badges}
           variants={variants}
           onVariantChange={setSelectedVariantForImages}
         />

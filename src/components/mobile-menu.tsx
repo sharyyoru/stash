@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 const menuLinks = [
   { href: "/just-landed", label: "New in" },
   { href: "/category/stickers", label: "Stickers" },
+  { href: "/category/lifestyle", label: "Lifestyle" },
   { href: "/category/stationery", label: "Stationery" },
   { href: "/category/bundles", label: "Bundles" },
   { href: "/blog", label: "Blog" },
