@@ -121,7 +121,7 @@ export async function createShipment(
   const { apiKey, clientKey, apiUrl } = getApiCredentials();
   const origin = getStoreOriginAddress();
 
-  // Jeebly expects weight as INTEGER string (no decimals), minimum 1kg
+  // Jeebly expects weight as NUMBER (not string), INTEGER only (no decimals), minimum 1kg
   // Per Jeebly support: "Add 1 kg in that case. It will not accept decimal"
   const rawWeight = params.weight || 1;
   const weightValue = Math.max(1, Math.ceil(rawWeight));
@@ -133,9 +133,9 @@ export async function createShipment(
     load_type: params.loadType || "Non-document",
     consignment_type: params.consignmentType || "FORWARD",
     description: params.description,
-    weight: String(weightValue),
+    weight: weightValue, // NUMBER not string, integer only
     payment_type: params.paymentType,
-    cod_amount: params.paymentType === "cod" ? String(params.codAmount || 0) : "",
+    cod_amount: params.paymentType === "cod" ? (params.codAmount || 0) : 0, // NUMBER not string
     num_pieces: params.numPieces,
     customer_reference_number: params.customerReferenceNumber || "",
     pickup_date: params.pickupDate,
