@@ -12,6 +12,7 @@ import { CartProvider } from "../components/cart-context";
 import CartButton from "../components/cart-button";
 import AuthSessionProvider from "../components/auth-session-provider";
 import TrackOrderButton from "../components/track-order-button";
+import MobileMenu from "../components/mobile-menu";
 import { authOptions } from "./api/auth/[...nextauth]/route";
 import "./globals.css";
 
@@ -118,6 +119,7 @@ function SiteHeader({ searchSuggestions, session }: SiteHeaderProps) {
           </nav>
         </div>
         <div className="flex items-center gap-2">
+          <MobileMenu />
           <SearchButton suggestions={searchSuggestions} />
           <SignInButton
             label={signInLabel}

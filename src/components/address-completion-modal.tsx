@@ -139,8 +139,8 @@ export default function AddressCompletionModal({
   const missingFieldsList = getMissingFields(existingAddress);
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white p-6 shadow-lg ring-1 ring-neutral-200">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4">
+      <div className="relative w-full sm:max-w-md overflow-hidden rounded-t-3xl sm:rounded-3xl bg-white p-4 sm:p-6 shadow-lg ring-1 ring-neutral-200 max-h-[95vh] sm:max-h-[85vh] overflow-y-auto">
         <button
           type="button"
           className="absolute right-4 top-4 inline-flex h-7 w-7 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50"
@@ -193,7 +193,7 @@ export default function AddressCompletionModal({
               />
             </div>
 
-            <div className="grid gap-3 grid-cols-2">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
               <div className="space-y-1">
                 <label htmlFor="modal-city" className="text-xs font-medium text-neutral-700">
                   City <span className="text-red-500">*</span>

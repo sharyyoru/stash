@@ -184,8 +184,8 @@ export default function CartButton({ label }: CartButtonProps) {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white p-6 shadow-lg ring-1 ring-neutral-200">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 px-0 sm:px-4">
+          <div className="relative w-full sm:max-w-md overflow-hidden rounded-t-3xl sm:rounded-3xl bg-white p-4 sm:p-6 shadow-lg ring-1 ring-neutral-200 max-h-[90vh] sm:max-h-[85vh]">
             <button
               type="button"
               className="absolute right-4 top-4 inline-flex h-7 w-7 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50"
@@ -241,21 +241,21 @@ export default function CartButton({ label }: CartButtonProps) {
                             {item.priceText}
                           </p>
                         )}
-                        <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-[11px] text-neutral-700 shadow-sm">
+                        <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-white px-2 py-1 text-[11px] text-neutral-700 shadow-sm">
                           <button
                             type="button"
                             onClick={() => handleDecrease(item)}
-                            className="flex h-4 w-4 items-center justify-center rounded-full border border-neutral-300 leading-none"
+                            className="flex h-6 w-6 sm:h-5 sm:w-5 items-center justify-center rounded-full border border-neutral-300 leading-none active:bg-neutral-100"
                           >
                             –
                           </button>
-                          <span className="min-w-[1.5rem] text-center">
+                          <span className="min-w-[1.5rem] text-center font-medium">
                             {item.quantity}
                           </span>
                           <button
                             type="button"
                             onClick={() => handleIncrease(item)}
-                            className="flex h-4 w-4 items-center justify-center rounded-full border border-neutral-300 leading-none"
+                            className="flex h-6 w-6 sm:h-5 sm:w-5 items-center justify-center rounded-full border border-neutral-300 leading-none active:bg-neutral-100"
                           >
                             +
                           </button>

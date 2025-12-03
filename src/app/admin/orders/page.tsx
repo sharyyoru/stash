@@ -193,9 +193,9 @@ export default async function AdminOrdersPage({
                         {formatOrderDate(order.createdAt)}
                       </p>
                     </div>
-                    <div className="flex items-center gap-3 text-xs">
-                      <form action={updateStatus} className="flex items-center gap-2 text-xs">
-                        <label className="text-neutral-600" htmlFor={`status-${order.id}`}>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <form action={updateStatus} className="flex flex-wrap items-center gap-2 text-xs">
+                        <label className="text-neutral-600 sr-only sm:not-sr-only" htmlFor={`status-${order.id}`}>
                           Status
                         </label>
                         <input type="hidden" name="id" value={order.id} />
@@ -203,7 +203,7 @@ export default async function AdminOrdersPage({
                           id={`status-${order.id}`}
                           name="status"
                           defaultValue={order.status}
-                          className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-300"
+                          className="rounded-full border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-300 min-w-0"
                         >
                           {statusOptions.map((opt) => (
                             <option key={opt.value} value={opt.value}>
@@ -213,7 +213,7 @@ export default async function AdminOrdersPage({
                         </select>
                         <button
                           type="submit"
-                          className="rounded-full bg-neutral-900 px-3 py-1.5 text-[11px] font-medium text-white shadow-sm hover:bg-neutral-800"
+                          className="rounded-full bg-neutral-900 px-3 py-2 text-[11px] font-medium text-white shadow-sm hover:bg-neutral-800 active:bg-neutral-700"
                         >
                           Update
                         </button>
@@ -222,7 +222,7 @@ export default async function AdminOrdersPage({
                         <input type="hidden" name="id" value={order.id} />
                         <button
                           type="submit"
-                          className="rounded-full border border-red-200 bg-white px-3 py-1.5 text-[11px] font-medium text-red-600 shadow-sm hover:border-red-300 hover:bg-red-50"
+                          className="rounded-full border border-red-200 bg-white px-3 py-2 text-[11px] font-medium text-red-600 shadow-sm hover:border-red-300 hover:bg-red-50 active:bg-red-100"
                         >
                           Delete
                         </button>
