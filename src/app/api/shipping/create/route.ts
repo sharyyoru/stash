@@ -135,13 +135,15 @@ export async function POST(req: NextRequest) {
     // Get customer profile/address from order
     const profile = (order.profile || {}) as any;
     const hasLine1 = typeof profile.line1 === "string" && profile.line1.trim().length > 0;
-    const hasMobile = typeof profile.mobile === "string" && profile.mobile.trim().length >= 7;
+    // Mobile should have at least 9 digits (UAE format: 5XXXXXXXX)
+    const mobileDigits = String(profile.mobile || "").replace(/\D/g, "");
+    const hasMobile = mobileDigits.length >= 9;
     const hasCity = typeof profile.city === "string" && profile.city.trim().length > 0;
     const hasArea = typeof profile.state === "string" && profile.state.trim().length > 0;
 
     const missingFields: string[] = [];
     if (!hasLine1) missingFields.push("address line 1");
-    if (!hasMobile) missingFields.push("mobile number");
+    if (!hasMobile) missingFields.push("mobile number (must be at least 9 digits)");
     if (!hasCity) missingFields.push("city");
     if (!hasArea) missingFields.push("state/emirate");
 
@@ -203,8 +205,10 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("Create shipment error:", error);
+    // Return the actual Jeebly error message to the frontend
+    const errorMessage = error.message || "Failed to create shipment";
     return NextResponse.json(
-      { error: "Failed to create shipment", details: error.message },
+      { error: errorMessage },
       { status: 500 }
     );
   }

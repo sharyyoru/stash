@@ -160,6 +160,8 @@ export async function createShipment(
     destination_address_type: params.destinationAddressType || "Normal",
   };
 
+  console.log("Jeebly request body:", JSON.stringify(body, null, 2));
+
   const response = await fetch(`${apiUrl}/customer/create_shipment`, {
     method: "POST",
     headers: {
@@ -171,9 +173,11 @@ export async function createShipment(
   });
 
   const data = await response.json();
+  console.log("Jeebly response:", JSON.stringify(data, null, 2));
   
   if (data.success !== "true") {
-    throw new Error(data.message || "Failed to create shipment");
+    const errorMsg = data.message || data.error || JSON.stringify(data);
+    throw new Error(`Jeebly API error: ${errorMsg}`);
   }
 
   return data;
