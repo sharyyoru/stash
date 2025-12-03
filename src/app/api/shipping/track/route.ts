@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOrder, updateShippingStatus } from "../../../../lib/orders-store";
 import { trackShipment, formatTrackingStatus } from "../../../../lib/jeebly";
+import { notifyShipmentInTransit, notifyShipmentDelivered } from "../../../../lib/email";
 
 /**
  * Track a shipment by order ID or AWB number
@@ -50,6 +51,8 @@ export async function POST(req: NextRequest) {
     if (orderId) {
       const order = await getOrder(orderId);
       if (order && order.shippingStatus !== tracking.last_status) {
+        const previousStatus = order.shippingStatus;
+        
         // Map Jeebly status to our order status
         let orderStatus: "in-transit" | "delivered" | undefined;
         
@@ -64,6 +67,36 @@ export async function POST(req: NextRequest) {
         }
 
         await updateShippingStatus(orderId, tracking.last_status, orderStatus);
+
+        // Send email notifications on status change
+        const emailData = {
+          orderId: order.id,
+          customerName: order.customer?.name || undefined,
+          customerEmail: order.customer?.email || undefined,
+          totalAmount: order.totalAmount,
+          currency: order.currency,
+          items: order.items.map((item: any) => ({
+            title: item.title,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+          mobile: (order.profile as any)?.mobile,
+          awbNumber: order.awbNumber || awb,
+        };
+
+        // Notify on in-transit (only if previous status wasn't already in-transit)
+        if (orderStatus === "in-transit" && previousStatus !== "in_transit" && previousStatus !== "out_for_delivery") {
+          notifyShipmentInTransit(emailData).catch((err) => 
+            console.error("In-transit notification error:", err)
+          );
+        }
+
+        // Notify on delivered
+        if (orderStatus === "delivered" && previousStatus !== "delivered") {
+          notifyShipmentDelivered(emailData).catch((err) => 
+            console.error("Delivered notification error:", err)
+          );
+        }
       }
     }
 

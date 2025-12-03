@@ -5,6 +5,7 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { getOrder, setAwbNumber, updateOrderStatus } from "../../../../lib/orders-store";
 import { createShipment, getNextBusinessDay } from "../../../../lib/jeebly";
 import { sanityClient } from "../../../../sanity/client";
+import { notifyShipmentCreated } from "../../../../lib/email";
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase());
 
@@ -198,6 +199,22 @@ export async function POST(req: NextRequest) {
     // Update order with AWB number and status
     await setAwbNumber(order.id, awbNumber, "pickup_scheduled");
     await updateOrderStatus(order.id, "processing");
+
+    // Send email notifications (non-blocking)
+    notifyShipmentCreated({
+      orderId: order.id,
+      customerName: order.customer?.name || undefined,
+      customerEmail: order.customer?.email || undefined,
+      totalAmount: order.totalAmount,
+      currency: order.currency,
+      items: order.items.map((item: any) => ({
+        title: item.title,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      mobile: (order.profile as any)?.mobile,
+      awbNumber,
+    }).catch((err) => console.error("Shipment notification email error:", err));
 
     return NextResponse.json({
       success: true,
