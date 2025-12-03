@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { CartItem, useCart } from "../../components/cart-context";
+import AddressCompletionModal, { isAddressComplete, type Address } from "../../components/address-completion-modal";
 
 export default function StashClient() {
   const { items, totalCount, totalAmount, currency, removeItem, clear, updateQuantity } = useCart();
@@ -14,6 +15,8 @@ export default function StashClient() {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [existingAddress, setExistingAddress] = useState<Partial<Address> | null>(null);
   const { data: session } = useSession();
 
   const hasItems = items.length > 0;
@@ -38,8 +41,27 @@ export default function StashClient() {
     ? items.find((i) => i.id === pendingRemoveId) || null
     : null;
 
+  // Get existing address from localStorage
+  const getStoredAddress = (): Partial<Address> | null => {
+    try {
+      const email = session?.user?.email;
+      if (email) {
+        const storageKey = `stash_profile_address:${email}`;
+        const raw = window.localStorage.getItem(storageKey);
+        if (raw) {
+          return JSON.parse(raw);
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  };
+
   const handleCheckout = async () => {
     if (!hasItems || isCheckingOut) return;
+    
+    // Check if user is logged in
     if (!session?.user) {
       try {
         window.localStorage.setItem("stash_open_cart_after_login", "1");
@@ -47,26 +69,31 @@ export default function StashClient() {
       router.push("/sign-in?callback=/stash");
       return;
     }
+
+    // Check if address is complete
+    const storedAddress = getStoredAddress();
+    if (!isAddressComplete(storedAddress)) {
+      setExistingAddress(storedAddress);
+      setShowAddressModal(true);
+      return;
+    }
+
+    // Proceed with checkout
+    await proceedWithCheckout(storedAddress as Address);
+  };
+
+  const handleAddressComplete = async (address: Address) => {
+    setShowAddressModal(false);
+    await proceedWithCheckout(address);
+  };
+
+  const proceedWithCheckout = async (profile: Address) => {
     setIsCheckingOut(true);
     setCheckoutError(null);
     setOrderId(null);
 
-    let profile: any = null;
     try {
-      const email = session?.user?.email;
-      if (email) {
-        const storageKey = `stash_profile_address:${email}`;
-        const raw = window.localStorage.getItem(storageKey);
-        if (raw) {
-          profile = JSON.parse(raw);
-        }
-      }
-    } catch {
-      // ignore profile errors
-    }
-
-    try {
-      const res = await fetch("/api/orders", {
+      const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -89,15 +116,29 @@ export default function StashClient() {
       }
 
       if (!res.ok) {
-        const message = (data as any)?.error || "Failed to create order";
-        throw new Error(message);
+        if (res.status === 503) {
+          throw new Error(data?.error || "Payment gateway not available");
+        }
+        throw new Error(data?.error || "Failed to create checkout");
       }
 
       const createdId: string | undefined = data?.order?.id;
+      const redirectUrl: string | undefined = data?.redirectUrl;
+
       if (createdId) {
         setOrderId(createdId);
       }
+
+      // If we have a redirect URL from Ziina, redirect to payment page
+      if (redirectUrl) {
+        clear();
+        window.location.href = redirectUrl;
+        return;
+      }
+
+      // Fallback: order created but no payment redirect
       clear();
+      setCheckoutError("Order created. Payment gateway is being set up - we'll contact you.");
     } catch (error: any) {
       setCheckoutError(error?.message || "Could not create order. Please try again.");
     } finally {
@@ -255,6 +296,15 @@ export default function StashClient() {
           </div>
         )}
       </div>
+
+      {/* Address Completion Modal */}
+      <AddressCompletionModal
+        open={showAddressModal}
+        onClose={() => setShowAddressModal(false)}
+        onComplete={handleAddressComplete}
+        email={session?.user?.email}
+        existingAddress={existingAddress}
+      />
     </div>
   );
 }

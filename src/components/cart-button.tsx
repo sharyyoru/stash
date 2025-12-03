@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { CartItem, useCart } from "./cart-context";
+import AddressCompletionModal, { isAddressComplete, type Address } from "./address-completion-modal";
 
 type CartButtonProps = {
   label: string;
@@ -20,6 +21,8 @@ export default function CartButton({ label }: CartButtonProps) {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [existingAddress, setExistingAddress] = useState<Partial<Address> | null>(null);
   const { data: session } = useSession();
 
   const hasItems = items.length > 0;
@@ -57,8 +60,27 @@ export default function CartButton({ label }: CartButtonProps) {
     }
   }, [pathname]);
 
+  // Get existing address from localStorage
+  const getStoredAddress = (): Partial<Address> | null => {
+    try {
+      const email = session?.user?.email;
+      if (email) {
+        const storageKey = `stash_profile_address:${email}`;
+        const raw = window.localStorage.getItem(storageKey);
+        if (raw) {
+          return JSON.parse(raw);
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  };
+
   const handleCheckout = async () => {
     if (!hasItems || isCheckingOut) return;
+    
+    // Check if user is logged in
     if (!session?.user) {
       try {
         window.localStorage.setItem("stash_open_cart_after_login", "1");
@@ -67,24 +89,28 @@ export default function CartButton({ label }: CartButtonProps) {
       router.push("/sign-in?callback=/stash");
       return;
     }
+
+    // Check if address is complete
+    const storedAddress = getStoredAddress();
+    if (!isAddressComplete(storedAddress)) {
+      setExistingAddress(storedAddress);
+      setShowAddressModal(true);
+      return;
+    }
+
+    // Proceed with checkout
+    await proceedWithCheckout(storedAddress as Address);
+  };
+
+  const handleAddressComplete = async (address: Address) => {
+    setShowAddressModal(false);
+    await proceedWithCheckout(address);
+  };
+
+  const proceedWithCheckout = async (profile: Address) => {
     setIsCheckingOut(true);
     setCheckoutError(null);
     setOrderId(null);
-
-    // Best-effort profile snapshot from localStorage, keyed by email like the profile page.
-    let profile: any = null;
-    try {
-      const email = session?.user?.email;
-      if (email) {
-        const storageKey = `stash_profile_address:${email}`;
-        const raw = window.localStorage.getItem(storageKey);
-        if (raw) {
-          profile = JSON.parse(raw);
-        }
-      }
-    } catch {
-      // ignore profile errors
-    }
 
     try {
       // Use the new checkout API that creates a Ziina payment intent
@@ -322,6 +348,15 @@ export default function CartButton({ label }: CartButtonProps) {
           )}
         </div>
       )}
+
+      {/* Address Completion Modal */}
+      <AddressCompletionModal
+        open={showAddressModal}
+        onClose={() => setShowAddressModal(false)}
+        onComplete={handleAddressComplete}
+        email={session?.user?.email}
+        existingAddress={existingAddress}
+      />
     </>
   );
 }

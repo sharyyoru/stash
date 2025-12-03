@@ -136,12 +136,19 @@ export async function POST(req: NextRequest) {
     const profile = (order.profile || {}) as any;
     const hasLine1 = typeof profile.line1 === "string" && profile.line1.trim().length > 0;
     const hasMobile = typeof profile.mobile === "string" && profile.mobile.trim().length >= 7;
+    const hasCity = typeof profile.city === "string" && profile.city.trim().length > 0;
+    const hasArea = typeof profile.state === "string" && profile.state.trim().length > 0;
 
-    if (!hasLine1 || !hasMobile) {
+    const missingFields: string[] = [];
+    if (!hasLine1) missingFields.push("address line 1");
+    if (!hasMobile) missingFields.push("mobile number");
+    if (!hasCity) missingFields.push("city");
+    if (!hasArea) missingFields.push("state/emirate");
+
+    if (missingFields.length > 0) {
       return NextResponse.json(
         {
-          error:
-            "Customer address is incomplete. Please ensure address line 1 and mobile number are saved before checkout.",
+          error: `Customer address is incomplete. Missing: ${missingFields.join(", ")}. Please ensure the customer has a complete delivery address saved.`,
         },
         { status: 400 },
       );
