@@ -121,9 +121,12 @@ export async function createShipment(
   const { apiKey, clientKey, apiUrl } = getApiCredentials();
   const origin = getStoreOriginAddress();
 
-  // Jeebly expects weight as a string, minimum 0.5kg
-  // Round up to ensure we have a valid weight (at least 1kg for demo API)
-  const weightValue = Math.max(1, Math.ceil(params.weight));
+  // Jeebly expects weight as INTEGER string (no decimals), minimum 1kg
+  // Per Jeebly support: "Add 1 kg in that case. It will not accept decimal"
+  const rawWeight = params.weight || 1;
+  const weightValue = Math.max(1, Math.ceil(rawWeight));
+  
+  console.log(`[Jeebly] Input weight: ${params.weight}, Calculated: ${weightValue}`);
   
   const body = {
     delivery_type: params.deliveryType,

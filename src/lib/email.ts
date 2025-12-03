@@ -23,11 +23,16 @@ type OrderEmailData = {
 
 async function sendEmail(to: string[], subject: string, html: string): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.EMAIL_FROM || "onboarding@resend.dev";
+  
+  console.log("[Email] Attempting to send email");
+  console.log("[Email] RESEND_API_KEY configured:", !!apiKey);
+  console.log("[Email] FROM:", fromEmail);
+  console.log("[Email] TO:", to.join(", "));
+  console.log("[Email] Subject:", subject);
   
   if (!apiKey) {
-    console.log("RESEND_API_KEY not configured, skipping email notification");
-    console.log("Would send email to:", to.join(", "));
-    console.log("Subject:", subject);
+    console.log("[Email] RESEND_API_KEY not configured, skipping email notification");
     return false;
   }
 
@@ -39,7 +44,7 @@ async function sendEmail(to: string[], subject: string, html: string): Promise<b
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: process.env.EMAIL_FROM || "Stash Creative <orders@stashcreative.ae>",
+        from: fromEmail,
         to,
         subject,
         html,
