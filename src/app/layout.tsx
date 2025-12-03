@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Monda } from "next/font/google";
 import { getServerSession } from "next-auth";
 import { sanityClient } from "../sanity/client";
-import { latestProductsQuery } from "../sanity/queries";
+import { latestProductsQuery, siteSettingsQuery } from "../sanity/queries";
 import SearchButton from "../components/search-button";
 import SignInButton from "../components/sign-in-button";
 import NavLink from "../components/nav-link";
@@ -15,6 +15,26 @@ import TrackOrderButton from "../components/track-order-button";
 import MobileMenu from "../components/mobile-menu";
 import { authOptions } from "./api/auth/[...nextauth]/route";
 import "./globals.css";
+
+type SiteSettings = {
+  announcementBar?: {
+    enabled?: boolean;
+    text?: string;
+    link?: string;
+    mobileText?: string;
+  };
+  supportLinks?: Array<{
+    _key: string;
+    title: string;
+    href: string;
+  }>;
+  socialLinks?: {
+    instagram?: string;
+    facebook?: string;
+    tiktok?: string;
+  };
+  footerTagline?: string;
+};
 
 const monda = Monda({
   variable: "--font-monda",
@@ -33,9 +53,10 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [searchData, session] = await Promise.all([
+  const [searchData, session, siteSettings] = await Promise.all([
     sanityClient.fetch(latestProductsQuery).catch(() => []),
     getServerSession(authOptions),
+    sanityClient.fetch(siteSettingsQuery).catch(() => null) as Promise<SiteSettings | null>,
   ]);
   const searchSuggestions = Array.isArray(searchData)
     ? searchData.slice(0, 4)
@@ -48,9 +69,9 @@ export default async function RootLayout({
         <AuthSessionProvider>
           <CartProvider>
             <div className="min-h-screen flex flex-col">
-              <SiteHeader searchSuggestions={searchSuggestions} session={session} />
+              <SiteHeader searchSuggestions={searchSuggestions} session={session} siteSettings={siteSettings} />
               <main className="flex-1">{children}</main>
-              <SiteFooter />
+              <SiteFooter siteSettings={siteSettings} />
             </div>
           </CartProvider>
         </AuthSessionProvider>
@@ -62,9 +83,10 @@ export default async function RootLayout({
 type SiteHeaderProps = {
   searchSuggestions: any[];
   session: any | null;
+  siteSettings: SiteSettings | null;
 };
 
-function SiteHeader({ searchSuggestions, session }: SiteHeaderProps) {
+function SiteHeader({ searchSuggestions, session, siteSettings }: SiteHeaderProps) {
   const firstName =
     typeof session?.user?.name === "string"
       ? session.user.name.split(" ")[0]
@@ -76,27 +98,40 @@ function SiteHeader({ searchSuggestions, session }: SiteHeaderProps) {
   const avatarInitial = firstName
     ? firstName.charAt(0).toUpperCase()
     : undefined;
+
+  const announcement = siteSettings?.announcementBar;
+  const showAnnouncement = announcement?.enabled !== false;
+  const announcementText = announcement?.text || "Free UAE shipping over AED 200 · New desk drop live now.";
+  const announcementLink = announcement?.link;
+  const mobileText = announcement?.mobileText || "Stash · Stationery & Stickers";
+
   return (
     <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white">
-      <div className="bg-[#fff3c4] text-xs text-black">
-        <div className="mx-auto flex h-9 max-w-6xl items-center justify-between px-4">
-          <p className="hidden md:inline">
-            Free UAE shipping over AED 200 · New desk drop live now.
-          </p>
-          <div className="flex flex-1 items-center justify-between gap-4 md:flex-none md:justify-end">
-            <p className="md:hidden">Stash · Stationery &amp; Stickers</p>
-            <div className="flex items-center gap-4 text-neutral-800">
-              <TrackOrderButton />
-              <Link
-                href="#"
-                className="transition-colors hover:text-[#b08968]"
-              >
-                Support
+      {showAnnouncement && (
+        <div className="bg-[#fff3c4] text-xs text-black">
+          <div className="mx-auto flex h-9 max-w-6xl items-center justify-between px-4">
+            {announcementLink ? (
+              <Link href={announcementLink} className="hidden md:inline hover:underline">
+                {announcementText}
               </Link>
+            ) : (
+              <p className="hidden md:inline">{announcementText}</p>
+            )}
+            <div className="flex flex-1 items-center justify-between gap-4 md:flex-none md:justify-end">
+              <p className="md:hidden">{mobileText}</p>
+              <div className="flex items-center gap-4 text-neutral-800">
+                <TrackOrderButton />
+                <Link
+                  href="#"
+                  className="transition-colors hover:text-[#b08968]"
+                >
+                  Support
+                </Link>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2">
@@ -136,7 +171,26 @@ function SiteHeader({ searchSuggestions, session }: SiteHeaderProps) {
   );
 }
 
-function SiteFooter() {
+type SiteFooterProps = {
+  siteSettings: SiteSettings | null;
+};
+
+function SiteFooter({ siteSettings }: SiteFooterProps) {
+  const supportLinks = siteSettings?.supportLinks?.length
+    ? siteSettings.supportLinks
+    : [
+        { _key: "contact", title: "Contact", href: "#" },
+        { _key: "shipping", title: "Shipping & returns", href: "#" },
+        { _key: "privacy", title: "Privacy", href: "#" },
+        { _key: "terms", title: "Terms", href: "#" },
+      ];
+
+  const socials = siteSettings?.socialLinks;
+  const instagramUrl = socials?.instagram || "#";
+  const facebookUrl = socials?.facebook || "#";
+  const tiktokUrl = socials?.tiktok || "#";
+  const footerTagline = siteSettings?.footerTagline || "Made for people who hoard nice paper.";
+
   return (
     <footer className="border-t border-neutral-200 bg-white">
       <div className="relative mx-auto max-w-6xl px-4 py-10 overflow-hidden">
@@ -182,38 +236,16 @@ function SiteFooter() {
           <div className="space-y-3 text-sm">
             <p className="font-medium text-neutral-900">Support</p>
             <ul className="space-y-1 text-neutral-500">
-              <li>
-                <Link
-                  href="#"
-                  className="transition-colors hover:text-[#b08968]"
-                >
-                  Contact
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="#"
-                  className="transition-colors hover:text-[#b08968]"
-                >
-                  Shipping &amp; returns
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="#"
-                  className="transition-colors hover:text-[#b08968]"
-                >
-                  Privacy
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="#"
-                  className="transition-colors hover:text-[#b08968]"
-                >
-                  Terms
-                </Link>
-              </li>
+              {supportLinks.map((link) => (
+                <li key={link._key}>
+                  <Link
+                    href={link.href || "#"}
+                    className="transition-colors hover:text-[#b08968]"
+                  >
+                    {link.title}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
@@ -222,7 +254,9 @@ function SiteFooter() {
             <ul className="space-y-1 text-neutral-500">
               <li>
                 <Link
-                  href="#"
+                  href={instagramUrl}
+                  target={instagramUrl.startsWith("http") ? "_blank" : undefined}
+                  rel={instagramUrl.startsWith("http") ? "noreferrer" : undefined}
                   className="flex items-center gap-2 transition-colors hover:text-[#b08968]"
                 >
                   <svg
@@ -242,8 +276,10 @@ function SiteFooter() {
               </li>
               <li>
                 <Link
-                  href="#"
-                  className="flex items-center gap-2 hover:text-neutral-900"
+                  href={facebookUrl}
+                  target={facebookUrl.startsWith("http") ? "_blank" : undefined}
+                  rel={facebookUrl.startsWith("http") ? "noreferrer" : undefined}
+                  className="flex items-center gap-2 transition-colors hover:text-[#b08968]"
                 >
                   <svg
                     aria-hidden="true"
@@ -258,8 +294,10 @@ function SiteFooter() {
               </li>
               <li>
                 <Link
-                  href="#"
-                  className="flex items-center gap-2 hover:text-neutral-900"
+                  href={tiktokUrl}
+                  target={tiktokUrl.startsWith("http") ? "_blank" : undefined}
+                  rel={tiktokUrl.startsWith("http") ? "noreferrer" : undefined}
+                  className="flex items-center gap-2 transition-colors hover:text-[#b08968]"
                 >
                   <svg
                     aria-hidden="true"
@@ -277,7 +315,7 @@ function SiteFooter() {
         </div>
         <div className="mt-8 flex flex-col items-start justify-between gap-4 border-t border-dashed border-neutral-200 pt-4 text-xs text-neutral-500 md:flex-row">
           <p>© {new Date().getFullYear()} Stash. All rights reserved.</p>
-          <p>Made for people who hoard nice paper.</p>
+          <p>{footerTagline}</p>
         </div>
       </div>
     </footer>

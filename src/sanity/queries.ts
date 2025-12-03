@@ -1,5 +1,25 @@
 import { groq } from "next-sanity";
 
+export const siteSettingsQuery = groq`*[_type == "siteSettings"][0]{
+  announcementBar {
+    enabled,
+    text,
+    link,
+    mobileText
+  },
+  supportLinks[] {
+    _key,
+    title,
+    href
+  },
+  socialLinks {
+    instagram,
+    facebook,
+    tiktok
+  },
+  footerTagline
+}`;
+
 export const homepageQuery = groq`*[_type == "homepage"][0]{
   title,
   heroHeading,

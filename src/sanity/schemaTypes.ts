@@ -187,6 +187,108 @@ export const blogPostType = defineType({
   ],
 });
 
+export const siteSettingsType = defineType({
+  name: "siteSettings",
+  title: "Site Settings",
+  type: "document",
+  fields: [
+    defineField({
+      name: "title",
+      title: "Settings Name",
+      type: "string",
+      initialValue: "Site Settings",
+    }),
+    // Announcement Bar
+    defineField({
+      name: "announcementBar",
+      title: "Announcement Bar",
+      type: "object",
+      fields: [
+        {
+          name: "enabled",
+          title: "Show announcement bar",
+          type: "boolean",
+          initialValue: true,
+        },
+        {
+          name: "text",
+          title: "Announcement text",
+          type: "string",
+          description: "Main announcement message displayed in the yellow bar",
+        },
+        {
+          name: "link",
+          title: "Link (optional)",
+          type: "string",
+          description: "URL to link the announcement to (leave empty for no link)",
+        },
+        {
+          name: "mobileText",
+          title: "Mobile text (optional)",
+          type: "string",
+          description: "Shorter text for mobile screens. If empty, shows 'Stash · Stationery & Stickers'",
+        },
+      ],
+    }),
+    // Footer Support Links
+    defineField({
+      name: "supportLinks",
+      title: "Support Links",
+      type: "array",
+      description: "Links shown under 'Support' in the footer",
+      of: [
+        {
+          type: "object",
+          name: "supportLink",
+          title: "Link",
+          fields: [
+            { name: "title", title: "Title", type: "string" },
+            { name: "href", title: "URL or path", type: "string" },
+          ],
+          preview: {
+            select: { title: "title", subtitle: "href" },
+          },
+        },
+      ],
+    }),
+    // Social Links
+    defineField({
+      name: "socialLinks",
+      title: "Social Links",
+      type: "object",
+      fields: [
+        {
+          name: "instagram",
+          title: "Instagram URL",
+          type: "string",
+        },
+        {
+          name: "facebook",
+          title: "Facebook URL",
+          type: "string",
+        },
+        {
+          name: "tiktok",
+          title: "TikTok URL",
+          type: "string",
+        },
+      ],
+    }),
+    // Footer bottom text
+    defineField({
+      name: "footerTagline",
+      title: "Footer Tagline",
+      type: "string",
+      description: "Small text at the bottom of the footer (e.g., 'Made for people who hoard nice paper.')",
+    }),
+  ],
+  preview: {
+    prepare() {
+      return { title: "Site Settings" };
+    },
+  },
+});
+
 export const homepageType = defineType({
   name: "homepage",
   title: "Homepage",
@@ -263,5 +365,6 @@ export const schemaTypes = [
   categoryType,
   characterType,
   blogPostType,
+  siteSettingsType,
   homepageType,
 ];
