@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
 import { createOrder, setPaymentIntent, type OrderItem } from "../../../lib/orders-store";
 import { createPaymentIntent, toBaseUnits } from "../../../lib/ziina";
+import { notifyNewOrder } from "../../../lib/email";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -57,7 +58,22 @@ export async function POST(req: NextRequest) {
     // 4. Store the payment intent ID on the order
     await setPaymentIntent(order.id, paymentIntent.id);
 
-    // 5. Return the redirect URL for the client
+    // 5. Send email notification to admins (non-blocking)
+    notifyNewOrder({
+      orderId: order.id,
+      customerName: session.user.name || undefined,
+      customerEmail: session.user.email || undefined,
+      totalAmount,
+      currency,
+      items: items.map((item) => ({
+        title: item.title,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      mobile: profile?.mobile,
+    }).catch((err) => console.error("Email notification error:", err));
+
+    // 6. Return the redirect URL for the client
     return NextResponse.json({
       order,
       paymentIntentId: paymentIntent.id,

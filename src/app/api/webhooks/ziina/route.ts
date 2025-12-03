@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOrderByPaymentIntent, updatePaymentStatus } from "../../../../lib/orders-store";
+import { notifyOrderPaid } from "../../../../lib/email";
 
 /**
  * Ziina Webhook Handler
@@ -50,6 +51,23 @@ export async function POST(req: NextRequest) {
     await updatePaymentStatus(order.id, status, orderStatus);
     
     console.log(`Updated order ${order.id} payment status to: ${status}`);
+
+    // Send email notification when order is paid
+    if (orderStatus === "paid") {
+      notifyOrderPaid({
+        orderId: order.id,
+        customerName: order.customer?.name || undefined,
+        customerEmail: order.customer?.email || undefined,
+        totalAmount: order.totalAmount,
+        currency: order.currency,
+        items: order.items.map((item) => ({
+          title: item.title,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        mobile: (order.profile as any)?.mobile,
+      }).catch((err) => console.error("Payment notification email error:", err));
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

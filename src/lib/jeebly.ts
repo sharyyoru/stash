@@ -121,12 +121,15 @@ export async function createShipment(
   const { apiKey, clientKey, apiUrl } = getApiCredentials();
   const origin = getStoreOriginAddress();
 
+  // Jeebly expects weight as a string, minimum 0.5kg
+  const weightValue = Math.max(0.5, params.weight);
+  
   const body = {
     delivery_type: params.deliveryType,
     load_type: params.loadType || "Non-document",
     consignment_type: params.consignmentType || "FORWARD",
     description: params.description,
-    weight: params.weight,
+    weight: String(weightValue),
     payment_type: params.paymentType,
     cod_amount: params.paymentType === "cod" ? String(params.codAmount || 0) : "",
     num_pieces: params.numPieces,
