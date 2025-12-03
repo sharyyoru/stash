@@ -23,11 +23,6 @@ type SiteSettings = {
     link?: string;
     mobileText?: string;
   };
-  supportLinks?: Array<{
-    _key: string;
-    title: string;
-    href: string;
-  }>;
   socialLinks?: {
     instagram?: string;
     facebook?: string;
@@ -176,14 +171,12 @@ type SiteFooterProps = {
 };
 
 function SiteFooter({ siteSettings }: SiteFooterProps) {
-  const supportLinks = siteSettings?.supportLinks?.length
-    ? siteSettings.supportLinks
-    : [
-        { _key: "contact", title: "Contact", href: "#" },
-        { _key: "shipping", title: "Shipping & returns", href: "#" },
-        { _key: "privacy", title: "Privacy", href: "#" },
-        { _key: "terms", title: "Terms", href: "#" },
-      ];
+  const supportLinks = [
+    { key: "contact", title: "Contact", href: "/contact" },
+    { key: "shipping", title: "Shipping & Returns", href: "/shipping" },
+    { key: "privacy", title: "Privacy", href: "/privacy" },
+    { key: "terms", title: "Terms", href: "/terms" },
+  ];
 
   const socials = siteSettings?.socialLinks;
   const instagramUrl = socials?.instagram || "#";
@@ -237,9 +230,9 @@ function SiteFooter({ siteSettings }: SiteFooterProps) {
             <p className="font-medium text-neutral-900">Support</p>
             <ul className="space-y-1 text-neutral-500">
               {supportLinks.map((link) => (
-                <li key={link._key}>
+                <li key={link.key}>
                   <Link
-                    href={link.href || "#"}
+                    href={link.href}
                     className="transition-colors hover:text-[#b08968]"
                   >
                     {link.title}

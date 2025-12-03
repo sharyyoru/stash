@@ -7,17 +7,42 @@ export const siteSettingsQuery = groq`*[_type == "siteSettings"][0]{
     link,
     mobileText
   },
-  supportLinks[] {
-    _key,
-    title,
-    href
-  },
   socialLinks {
     instagram,
     facebook,
     tiktok
   },
   footerTagline
+}`;
+
+export const contactPageQuery = groq`*[_type == "contactPage"][0]{
+  title,
+  heading,
+  subheading,
+  email,
+  whatsapp,
+  instagram,
+  content
+}`;
+
+export const shippingPageQuery = groq`*[_type == "shippingPage"][0]{
+  title,
+  heading,
+  content
+}`;
+
+export const privacyPageQuery = groq`*[_type == "privacyPage"][0]{
+  title,
+  heading,
+  lastUpdated,
+  content
+}`;
+
+export const termsPageQuery = groq`*[_type == "termsPage"][0]{
+  title,
+  heading,
+  lastUpdated,
+  content
 }`;
 
 export const homepageQuery = groq`*[_type == "homepage"][0]{

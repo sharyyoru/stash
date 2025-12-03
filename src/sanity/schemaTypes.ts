@@ -187,6 +187,159 @@ export const blogPostType = defineType({
   ],
 });
 
+export const contactPageType = defineType({
+  name: "contactPage",
+  title: "Contact Page",
+  type: "document",
+  fields: [
+    defineField({
+      name: "title",
+      title: "Page Title",
+      type: "string",
+      initialValue: "Contact Us",
+    }),
+    defineField({
+      name: "heading",
+      title: "Heading",
+      type: "string",
+    }),
+    defineField({
+      name: "subheading",
+      title: "Subheading",
+      type: "text",
+      rows: 2,
+    }),
+    defineField({
+      name: "email",
+      title: "Contact Email",
+      type: "string",
+    }),
+    defineField({
+      name: "whatsapp",
+      title: "WhatsApp Number",
+      type: "string",
+      description: "Include country code, e.g., +971501234567",
+    }),
+    defineField({
+      name: "instagram",
+      title: "Instagram Handle",
+      type: "string",
+      description: "e.g., @stashcollections",
+    }),
+    defineField({
+      name: "content",
+      title: "Additional Content",
+      type: "array",
+      of: [{ type: "block" }],
+    }),
+  ],
+  preview: {
+    prepare() {
+      return { title: "Contact Page" };
+    },
+  },
+});
+
+export const shippingPageType = defineType({
+  name: "shippingPage",
+  title: "Shipping & Returns Page",
+  type: "document",
+  fields: [
+    defineField({
+      name: "title",
+      title: "Page Title",
+      type: "string",
+      initialValue: "Shipping & Returns",
+    }),
+    defineField({
+      name: "heading",
+      title: "Heading",
+      type: "string",
+    }),
+    defineField({
+      name: "content",
+      title: "Content",
+      type: "array",
+      of: [{ type: "block" }],
+    }),
+  ],
+  preview: {
+    prepare() {
+      return { title: "Shipping & Returns Page" };
+    },
+  },
+});
+
+export const privacyPageType = defineType({
+  name: "privacyPage",
+  title: "Privacy Policy Page",
+  type: "document",
+  fields: [
+    defineField({
+      name: "title",
+      title: "Page Title",
+      type: "string",
+      initialValue: "Privacy Policy",
+    }),
+    defineField({
+      name: "heading",
+      title: "Heading",
+      type: "string",
+    }),
+    defineField({
+      name: "lastUpdated",
+      title: "Last Updated",
+      type: "date",
+    }),
+    defineField({
+      name: "content",
+      title: "Content",
+      type: "array",
+      of: [{ type: "block" }],
+    }),
+  ],
+  preview: {
+    prepare() {
+      return { title: "Privacy Policy Page" };
+    },
+  },
+});
+
+export const termsPageType = defineType({
+  name: "termsPage",
+  title: "Terms & Conditions Page",
+  type: "document",
+  fields: [
+    defineField({
+      name: "title",
+      title: "Page Title",
+      type: "string",
+      initialValue: "Terms & Conditions",
+    }),
+    defineField({
+      name: "heading",
+      title: "Heading",
+      type: "string",
+    }),
+    defineField({
+      name: "lastUpdated",
+      title: "Last Updated",
+      type: "date",
+    }),
+    defineField({
+      name: "content",
+      title: "Content",
+      type: "array",
+      of: [{ type: "block" }],
+    }),
+  ],
+  preview: {
+    prepare() {
+      return { title: "Terms & Conditions Page" };
+    },
+  },
+});
+
 export const siteSettingsType = defineType({
   name: "siteSettings",
   title: "Site Settings",
@@ -227,27 +380,6 @@ export const siteSettingsType = defineType({
           title: "Mobile text (optional)",
           type: "string",
           description: "Shorter text for mobile screens. If empty, shows 'Stash · Stationery & Stickers'",
-        },
-      ],
-    }),
-    // Footer Support Links
-    defineField({
-      name: "supportLinks",
-      title: "Support Links",
-      type: "array",
-      description: "Links shown under 'Support' in the footer",
-      of: [
-        {
-          type: "object",
-          name: "supportLink",
-          title: "Link",
-          fields: [
-            { name: "title", title: "Title", type: "string" },
-            { name: "href", title: "URL or path", type: "string" },
-          ],
-          preview: {
-            select: { title: "title", subtitle: "href" },
-          },
         },
       ],
     }),
@@ -365,6 +497,10 @@ export const schemaTypes = [
   categoryType,
   characterType,
   blogPostType,
+  contactPageType,
+  shippingPageType,
+  privacyPageType,
+  termsPageType,
   siteSettingsType,
   homepageType,
 ];
