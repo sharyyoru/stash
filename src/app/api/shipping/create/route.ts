@@ -70,12 +70,13 @@ async function calculateOrderWeightKg(order: any): Promise<number> {
       total += fallbackPieces * 0.2;
     }
 
-    // Ensure within sensible bounds for Jeebly
+    // Ensure within sensible bounds for Jeebly (min 0.5kg, max 50kg)
     if (!Number.isFinite(total) || total <= 0) {
       total = 0.5;
     }
 
-    return Math.min(total, 50);
+    // Jeebly requires minimum 0.5kg
+    return Math.max(0.5, Math.min(total, 50));
   } catch {
     const items = Array.isArray(order.items) ? order.items : [];
     const numPieces = items.reduce(
