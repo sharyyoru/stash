@@ -106,7 +106,8 @@ function getStoreOriginAddress() {
     houseNo: process.env.STORE_ADDRESS_LINE1 || "123",
     buildingName: process.env.STORE_BUILDING || "Business Bay",
     area: process.env.STORE_AREA || "Business Bay",
-    landmark: "",
+    // Jeebly REQUIRES a landmark - cannot be empty
+    landmark: process.env.STORE_LANDMARK || "Near Circle Mall",
     city: process.env.STORE_CITY || "Dubai",
     addressType: "Normal" as AddressType,
   };
@@ -162,7 +163,8 @@ export async function createShipment(
     destination_address_house_no: params.destinationHouseNo,
     destination_address_building_name: params.destinationBuildingName,
     destination_address_area: params.destinationArea,
-    destination_address_landmark: params.destinationLandmark || "",
+    // Jeebly REQUIRES a landmark - provide default if empty
+    destination_address_landmark: params.destinationLandmark || `Near ${params.destinationArea || "Main Road"}`,
     destination_address_city: params.destinationCity,
     destination_address_type: params.destinationAddressType || "Normal",
   };
