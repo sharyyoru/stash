@@ -127,7 +127,11 @@ export async function createShipment(
   const rawWeight = params.weight || 1;
   const weightValue = Math.max(1, Math.ceil(rawWeight));
   
-  console.log(`[Jeebly] Input weight: ${params.weight}, Calculated: ${weightValue}`);
+  // Jeebly expects num_pieces as INTEGER, minimum 1
+  const rawPieces = params.numPieces || 1;
+  const numPiecesValue = Math.max(1, Math.floor(rawPieces));
+  
+  console.log(`[Jeebly] Input weight: ${params.weight}, Calculated: ${weightValue}, Pieces: ${numPiecesValue}`);
   
   const body = {
     delivery_type: params.deliveryType,
@@ -137,7 +141,7 @@ export async function createShipment(
     weight: weightValue, // NUMBER not string, integer only
     payment_type: params.paymentType,
     cod_amount: params.paymentType === "cod" ? (params.codAmount || 0) : 0, // NUMBER not string
-    num_pieces: params.numPieces,
+    num_pieces: numPiecesValue, // INTEGER, minimum 1
     customer_reference_number: params.customerReferenceNumber || "",
     pickup_date: params.pickupDate,
     

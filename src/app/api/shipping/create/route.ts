@@ -164,8 +164,13 @@ export async function POST(req: NextRequest) {
       .join(", ")
       .substring(0, 200);
 
-    // Calculate total pieces
-    const numPieces = order.items.reduce((sum, item) => sum + item.quantity, 0);
+    // Calculate total pieces - ensure each item has valid quantity (min 1)
+    const numPieces = order.items.reduce((sum, item) => {
+      const qty = typeof item.quantity === "number" && item.quantity > 0 ? item.quantity : 1;
+      return sum + qty;
+    }, 0);
+    // Jeebly requires at least 1 piece
+    const validNumPieces = Math.max(1, Math.floor(numPieces));
 
     // Calculate total shipment weight (kg) from product/category settings
     const totalWeightKg = await calculateOrderWeightKg(order);
@@ -176,7 +181,7 @@ export async function POST(req: NextRequest) {
       description,
       weight: totalWeightKg,
       paymentType: "prepaid", // Already paid via Ziina
-      numPieces,
+      numPieces: validNumPieces,
       customerReferenceNumber: order.id,
       pickupDate: getNextBusinessDay(),
       
