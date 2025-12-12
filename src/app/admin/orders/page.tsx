@@ -12,6 +12,8 @@ import {
 import CopyableText from "../../../components/copyable-text";
 import OrderProofUpload from "../../../components/order-proof-upload";
 import CreateShipmentButton from "../../../components/create-shipment-button";
+import CancelShipmentButton from "../../../components/cancel-shipment-button";
+import JeeblyAccountBalance from "../../../components/jeebly-account-balance";
 
 function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false;
@@ -128,7 +130,18 @@ export default async function AdminOrdersPage({
               Orders
             </h1>
           </div>
-          <p className="text-xs text-neutral-600">Signed in as {email}</p>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/admin/deliveries"
+              className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 shadow-sm hover:bg-blue-100"
+            >
+              <svg className="mr-1.5 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m13-8l-8 8-4-4" />
+              </svg>
+              Delivery Dashboard
+            </Link>
+            <p className="text-xs text-neutral-600">Signed in as {email}</p>
+          </div>
         </div>
 
         {orders.length === 0 ? (
@@ -165,6 +178,7 @@ export default async function AdminOrdersPage({
                   Unpaid: {baseCurrency} {totalUnpaid.toFixed(2)}
                 </p>
               </div>
+              <JeeblyAccountBalance />
             </div>
 
             {filteredOrders.length === 0 ? (
@@ -315,6 +329,11 @@ export default async function AdminOrdersPage({
                       orderId={order.id}
                       orderStatus={order.status}
                       existingAwb={order.awbNumber}
+                    />
+                    <CancelShipmentButton
+                      orderId={order.id}
+                      awbNumber={order.awbNumber}
+                      shippingStatus={order.shippingStatus}
                     />
                     {order.shippingStatus && (
                       <span className="text-[11px] text-neutral-500">

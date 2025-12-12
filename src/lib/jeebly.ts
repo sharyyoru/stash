@@ -86,6 +86,21 @@ export type GenerateLabelResponse = {
   message?: string;
 };
 
+export type CancelShipmentResponse = {
+  success: string;
+  message?: string;
+  cancelled_awb?: string;
+};
+
+export type AccountBalanceResponse = {
+  success: string;
+  balance?: number;
+  currency?: string;
+  credit_limit?: number;
+  available_balance?: number;
+  message?: string;
+};
+
 function getApiCredentials() {
   const apiKey = process.env.JEEBLY_API_KEY;
   const clientKey = process.env.JEEBLY_CLIENT_KEY;
@@ -238,6 +253,51 @@ export async function generateLabel(
     body: JSON.stringify({
       reference_number: awbNumber,
     }),
+  });
+
+  const data = await response.json();
+  return data;
+}
+
+/**
+ * Cancel a shipment by AWB number
+ */
+export async function cancelShipment(
+  awbNumber: string,
+  reason?: string
+): Promise<CancelShipmentResponse> {
+  const { apiKey, clientKey, apiUrl } = getApiCredentials();
+
+  const response = await fetch(`${apiUrl}/customer/cancel_shipment`, {
+    method: "POST",
+    headers: {
+      "X-API-KEY": apiKey,
+      "client_key": clientKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      reference_number: awbNumber,
+      cancellation_reason: reason || "Customer request",
+    }),
+  });
+
+  const data = await response.json();
+  return data;
+}
+
+/**
+ * Get account balance and credit information
+ */
+export async function getAccountBalance(): Promise<AccountBalanceResponse> {
+  const { apiKey, clientKey, apiUrl } = getApiCredentials();
+
+  const response = await fetch(`${apiUrl}/customer/account_balance`, {
+    method: "GET",
+    headers: {
+      "X-API-KEY": apiKey,
+      "client_key": clientKey,
+      "Content-Type": "application/json",
+    },
   });
 
   const data = await response.json();
