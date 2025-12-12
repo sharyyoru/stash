@@ -14,58 +14,75 @@ function isAdminEmail(email: string | null | undefined): boolean {
 }
 
 async function getDeliveryData() {
-  const orders = await listOrders();
-  
-  // Filter orders with AWB numbers (shipments created)
-  const ordersWithShipments = orders.filter(order => order.awbNumber);
-  
-  const deliveries = [];
-  
-  for (const order of ordersWithShipments) {
-    try {
-      const trackingResult = await trackShipment(order.awbNumber!);
-      
-      if (trackingResult.success === "true" && trackingResult.Tracking) {
-        const tracking = trackingResult.Tracking;
+  try {
+    const orders = await listOrders();
+    
+    // Filter orders with AWB numbers (shipments created)
+    const ordersWithShipments = orders.filter(order => order.awbNumber);
+    
+    const deliveries = [];
+    
+    for (const order of ordersWithShipments) {
+      try {
+        const trackingResult = await trackShipment(order.awbNumber!);
         
+        if (trackingResult.success === "true" && trackingResult.Tracking) {
+          const tracking = trackingResult.Tracking;
+          
+          deliveries.push({
+            orderId: order.id,
+            awbNumber: order.awbNumber!,
+            status: tracking.last_status,
+            statusText: formatTrackingStatus(tracking.last_status as any),
+            pickupDate: tracking.pickup_date,
+            bookingDate: tracking.booking_date,
+            events: tracking.events.map(event => ({
+              status: event.status,
+              description: event.desc,
+              hubName: event.hub_name,
+              timestamp: event.event_date_time,
+              riderName: event.rider_name || undefined,
+              podImage: event.pod_image || undefined,
+              failureReason: event.failure_reason || undefined,
+            })),
+            customerName: order.customer?.name,
+            totalAmount: order.totalAmount,
+            currency: order.currency,
+          });
+        } else {
+          // Add order with basic info if tracking API doesn't return data
+          deliveries.push({
+            orderId: order.id,
+            awbNumber: order.awbNumber!,
+            status: order.shippingStatus || "pickup_scheduled",
+            statusText: order.shippingStatus ? formatTrackingStatus(order.shippingStatus as any) : "Pickup Scheduled",
+            events: [],
+            customerName: order.customer?.name,
+            totalAmount: order.totalAmount,
+            currency: order.currency,
+          });
+        }
+      } catch (error) {
+        console.error(`Failed to track shipment ${order.awbNumber}:`, error);
+        // Still add the order with basic info if tracking fails
         deliveries.push({
           orderId: order.id,
           awbNumber: order.awbNumber!,
-          status: tracking.last_status,
-          statusText: formatTrackingStatus(tracking.last_status as any),
-          pickupDate: tracking.pickup_date,
-          bookingDate: tracking.booking_date,
-          events: tracking.events.map(event => ({
-            status: event.status,
-            description: event.desc,
-            hubName: event.hub_name,
-            timestamp: event.event_date_time,
-            riderName: event.rider_name || undefined,
-            podImage: event.pod_image || undefined,
-            failureReason: event.failure_reason || undefined,
-          })),
+          status: order.shippingStatus || "pickup_scheduled",
+          statusText: order.shippingStatus ? formatTrackingStatus(order.shippingStatus as any) : "Pickup Scheduled",
+          events: [],
           customerName: order.customer?.name,
           totalAmount: order.totalAmount,
           currency: order.currency,
         });
       }
-    } catch (error) {
-      console.error(`Failed to track shipment ${order.awbNumber}:`, error);
-      // Still add the order with basic info if tracking fails
-      deliveries.push({
-        orderId: order.id,
-        awbNumber: order.awbNumber!,
-        status: order.shippingStatus || "unknown",
-        statusText: order.shippingStatus ? formatTrackingStatus(order.shippingStatus as any) : "Unknown",
-        events: [],
-        customerName: order.customer?.name,
-        totalAmount: order.totalAmount,
-        currency: order.currency,
-      });
     }
+    
+    return deliveries;
+  } catch (error) {
+    console.error("Failed to get delivery data:", error);
+    return [];
   }
-  
-  return deliveries;
 }
 
 async function getBalance() {
@@ -146,10 +163,6 @@ export default async function AdminDeliveriesPage() {
 
         <DeliveryTrackingDashboard 
           deliveries={deliveries}
-          onRefresh={() => {
-            // Client-side refresh will be handled by the component
-            window.location.reload();
-          }}
         />
       </div>
     </div>

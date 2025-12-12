@@ -39,7 +39,11 @@ export default function DeliveryTrackingDashboard({
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = async () => {
-    if (!onRefresh) return;
+    if (!onRefresh) {
+      // If no onRefresh function provided, just reload the page
+      window.location.reload();
+      return;
+    }
     setIsRefreshing(true);
     await onRefresh();
     setIsRefreshing(false);
