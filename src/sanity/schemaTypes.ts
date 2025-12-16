@@ -406,6 +406,14 @@ export const siteSettingsType = defineType({
         },
       ],
     }),
+    // Delivery Charge
+    defineField({
+      name: "deliveryCharge",
+      title: "Delivery Charge (AED)",
+      type: "number",
+      description: "Standard delivery charge for all orders across UAE (e.g., 25 for AED 25)",
+      initialValue: 25,
+    }),
     // Footer bottom text
     defineField({
       name: "footerTagline",

@@ -2,10 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useState, useEffect } from "react";
+import { useCart, type CartItem } from "../../components/cart-context";
 import { useRouter } from "next/navigation";
-import { CartItem, useCart } from "../../components/cart-context";
+import { useSession } from "next-auth/react";
 import AddressCompletionModal, { isAddressComplete, type Address } from "../../components/address-completion-modal";
 
 export default function StashClient() {
@@ -13,16 +13,30 @@ export default function StashClient() {
   const router = useRouter();
   const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [orderId, setOrderId] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [orderId, setOrderId] = useState<string | null>(null);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [existingAddress, setExistingAddress] = useState<Partial<Address> | null>(null);
+  const [deliveryCharge, setDeliveryCharge] = useState<number>(25);
   const { data: session } = useSession();
 
   const hasItems = items.length > 0;
 
-  const formattedTotal = totalAmount > 0
-    ? `${currency} ${totalAmount.toFixed(2).replace(/\.00$/, "")}`
+  // Fetch delivery charge on mount
+  useEffect(() => {
+    fetch('/api/delivery-charge')
+      .then(res => res.json())
+      .then(data => setDeliveryCharge(data.deliveryCharge || 25))
+      .catch(() => setDeliveryCharge(25));
+  }, []);
+
+  const subtotal = totalAmount;
+  const total = subtotal + deliveryCharge;
+  const formattedSubtotal = subtotal > 0
+    ? `${currency} ${subtotal.toFixed(2).replace(/\.00$/, "")}`
+    : `${currency} 0`;
+  const formattedTotal = total > 0
+    ? `${currency} ${total.toFixed(2).replace(/\.00$/, "")}`
     : `${currency} 0`;
 
   const handleDecrease = (item: CartItem) => {
@@ -263,11 +277,22 @@ export default function StashClient() {
                   Review your stash total and confirm your order. You'll be contacted about payment.
                 </p>
               </div>
-              <div className="mt-2 space-y-2 text-xs text-neutral-600">
-                <p className="text-lg font-bold text-[#b08968]">
-                  {formattedTotal}
-                </p>
-                <p>
+              <div className="mt-2 space-y-3 text-sm">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-neutral-600">
+                    <span>Subtotal</span>
+                    <span>{formattedSubtotal}</span>
+                  </div>
+                  <div className="flex justify-between text-neutral-600">
+                    <span>Delivery (UAE)</span>
+                    <span>{currency} {deliveryCharge.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-neutral-200 text-base font-bold text-[#b08968]">
+                    <span>Total</span>
+                    <span>{formattedTotal}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-neutral-600">
                   We do not collect payment details yet. This order will be sent to the team with payment marked as pending.
                 </p>
               </div>

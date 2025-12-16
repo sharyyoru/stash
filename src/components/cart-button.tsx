@@ -23,12 +23,26 @@ export default function CartButton({ label }: CartButtonProps) {
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [existingAddress, setExistingAddress] = useState<Partial<Address> | null>(null);
+  const [deliveryCharge, setDeliveryCharge] = useState<number>(25);
   const { data: session } = useSession();
 
   const hasItems = items.length > 0;
 
-  const formattedTotal = totalAmount > 0
-    ? `${currency} ${totalAmount.toFixed(2).replace(/\.00$/, "")}`
+  // Fetch delivery charge on mount
+  useEffect(() => {
+    fetch('/api/delivery-charge')
+      .then(res => res.json())
+      .then(data => setDeliveryCharge(data.deliveryCharge || 25))
+      .catch(() => setDeliveryCharge(25));
+  }, []);
+
+  const subtotal = totalAmount;
+  const total = subtotal + deliveryCharge;
+  const formattedSubtotal = subtotal > 0
+    ? `${currency} ${subtotal.toFixed(2).replace(/\.00$/, "")}`
+    : `${currency} 0`;
+  const formattedTotal = total > 0
+    ? `${currency} ${total.toFixed(2).replace(/\.00$/, "")}`
     : `${currency} 0`;
 
   const handleDecrease = (item: CartItem) => {
@@ -204,9 +218,20 @@ export default function CartButton({ label }: CartButtonProps) {
                     {hasItems ? `${totalCount} item${totalCount === 1 ? "" : "s"} in stash` : "Stash is empty"}
                   </h2>
                   {totalAmount > 0 && (
-                    <p className="mt-1 text-lg font-bold text-[#b08968]">
-                      {formattedTotal}
-                    </p>
+                    <div className="mt-2 space-y-1 text-sm">
+                      <div className="flex justify-between text-neutral-600">
+                        <span>Subtotal</span>
+                        <span>{formattedSubtotal}</span>
+                      </div>
+                      <div className="flex justify-between text-neutral-600">
+                        <span>Delivery</span>
+                        <span>{currency} {deliveryCharge.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between pt-1 border-t border-neutral-200 font-bold text-[#b08968]">
+                        <span>Total</span>
+                        <span>{formattedTotal}</span>
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>

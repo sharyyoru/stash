@@ -4,6 +4,7 @@ import { authOptions } from "../auth/[...nextauth]/route";
 import { createOrder, setPaymentIntent, type OrderItem } from "../../../lib/orders-store";
 import { createPaymentIntent, toBaseUnits } from "../../../lib/ziina";
 import { notifyNewOrder } from "../../../lib/email";
+import { getDeliveryCharge } from "../../../lib/delivery-charge";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -18,12 +19,16 @@ export async function POST(req: NextRequest) {
   }
 
   const items: OrderItem[] = body.items;
-  const totalAmount: number = body.totalAmount;
+  const subtotal: number = body.totalAmount;
   const totalCount: number = body.totalCount ?? items.reduce((sum, item) => sum + (item.quantity || 0), 0);
   const currency: string = body.currency || "AED";
   const profile = body.profile ?? null;
 
   try {
+    // Get delivery charge from Sanity settings
+    const deliveryCharge = await getDeliveryCharge();
+    const totalAmount = subtotal + deliveryCharge;
+
     // 1. Create the order in our database
     const order = await createOrder({
       items,

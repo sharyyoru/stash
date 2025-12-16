@@ -146,6 +146,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
               <p>Packed with care so your stash arrives in display-ready shape.</p>
               <p>Orders ship within 3–5 business days from Dubai, UAE.</p>
               <p>Tracked shipping options available at checkout.</p>
+              <p className="pt-2 border-t border-neutral-100 font-medium text-neutral-900">
+                Delivery charge: AED 25 (all orders across UAE)
+              </p>
             </div>
           </div>
         </section>

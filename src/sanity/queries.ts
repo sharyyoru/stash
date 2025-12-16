@@ -12,6 +12,7 @@ export const siteSettingsQuery = groq`*[_type == "siteSettings"][0]{
     facebook,
     tiktok
   },
+  deliveryCharge,
   footerTagline
 }`;
 
