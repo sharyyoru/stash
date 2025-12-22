@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useCart } from "../../../components/cart-context";
 
 type VerificationResult = {
   success: boolean;
@@ -20,6 +21,8 @@ export default function CheckoutSuccessPage() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get("order_id");
   const paymentIntentId = searchParams.get("payment_intent_id");
+
+  const { clear } = useCart();
 
   const [isVerifying, setIsVerifying] = useState(true);
   const [result, setResult] = useState<VerificationResult | null>(null);
@@ -59,6 +62,12 @@ export default function CheckoutSuccessPage() {
 
     verifyPayment();
   }, [orderId, paymentIntentId]);
+
+  useEffect(() => {
+    if (result?.success) {
+      clear();
+    }
+  }, [result?.success, clear]);
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center px-4">

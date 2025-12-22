@@ -4,6 +4,8 @@ import { useState } from "react";
 import Image from "next/image";
 import { useCart } from "./cart-context";
 
+const MAIL_CLUB_SLUG = "the-secret-stash-mail-club";
+
 export type FrequentlyBoughtProduct = {
   id: string;
   title: string;
@@ -22,6 +24,7 @@ export default function FrequentlyBoughtTogetherCard({
 }: FrequentlyBoughtTogetherCardProps) {
   const { addItem } = useCart();
   const [justAdded, setJustAdded] = useState(false);
+  const [bundleError, setBundleError] = useState<string | null>(null);
 
   if (!Array.isArray(products) || products.length < 2) {
     return null;
@@ -44,12 +47,22 @@ export default function FrequentlyBoughtTogetherCard({
   }`;
 
   const handleAddBundle = () => {
+    let hadError = false;
+
+    const bundleHasMailClub = products.some((p) => p.slug === MAIL_CLUB_SLUG);
+    const bundleHasOther = products.some((p) => p.slug !== MAIL_CLUB_SLUG);
+    if (bundleHasMailClub && bundleHasOther) {
+      setBundleError("The Secret Stash Mail Club must be purchased alone.");
+      window.setTimeout(() => setBundleError(null), 2500);
+      return;
+    }
+
     products.forEach((product) => {
       if (!product.id) return;
       const priceText = `${product.currency || primaryCurrency} ${
         typeof product.price === "number" ? product.price : ""
       }`;
-      addItem(
+      const ok = addItem(
         {
           id: product.id,
           title: product.title,
@@ -59,9 +72,16 @@ export default function FrequentlyBoughtTogetherCard({
         },
         1,
       );
+      if (!ok) {
+        setBundleError("The Secret Stash Mail Club must be purchased alone.");
+        window.setTimeout(() => setBundleError(null), 2500);
+        hadError = true;
+      }
     });
-    setJustAdded(true);
-    window.setTimeout(() => setJustAdded(false), 900);
+    if (!hadError) {
+      setJustAdded(true);
+      window.setTimeout(() => setJustAdded(false), 900);
+    }
   };
 
   return (
@@ -113,6 +133,12 @@ export default function FrequentlyBoughtTogetherCard({
           {justAdded ? "Bundle added" : "Add bundle to stash"}
         </button>
       </div>
+
+      {bundleError && (
+        <p className="text-[11px] text-amber-700">
+          {bundleError}
+        </p>
+      )}
     </div>
   );
 }

@@ -6,8 +6,10 @@ import { createPaymentIntent, toBaseUnits } from "../../../lib/ziina";
 import { notifyNewOrder } from "../../../lib/email";
 import { getDeliveryCharge } from "../../../lib/delivery-charge";
 
+const MAIL_CLUB_SLUG = "the-secret-stash-mail-club";
+
 function isMailClubOnly(items: Array<{ slug?: string }>): boolean {
-  return items.length > 0 && items.every((item) => item.slug === "the-secret-stash-mail-club");
+  return items.length > 0 && items.every((item) => item.slug === MAIL_CLUB_SLUG);
 }
 
 export async function POST(req: NextRequest) {
@@ -29,6 +31,33 @@ export async function POST(req: NextRequest) {
   const profile = body.profile ?? null;
 
   try {
+    const hasMailClub = items.some((item) => item.slug === MAIL_CLUB_SLUG);
+    const hasOther = items.some((item) => item.slug !== MAIL_CLUB_SLUG);
+
+    if (hasMailClub && hasOther) {
+      return NextResponse.json(
+        { error: "The Secret Stash Mail Club must be purchased alone." },
+        { status: 400 },
+      );
+    }
+
+    const countryRaw = typeof profile?.country === "string" ? profile.country.trim() : "";
+    const country = countryRaw.toLowerCase().replace(/\./g, "");
+    const isUae =
+      country.length === 0 ||
+      country === "uae" ||
+      country === "ae" ||
+      country === "united arab emirates" ||
+      country === "united arab emirate";
+    const isInternational = !isUae;
+
+    if (isInternational && !isMailClubOnly(items)) {
+      return NextResponse.json(
+        { error: "International shipping is only available for The Secret Stash Mail Club." },
+        { status: 400 },
+      );
+    }
+
     // Get delivery charge from Sanity settings
     const deliveryCharge = isMailClubOnly(items) ? 0 : await getDeliveryCharge();
     const totalAmount = subtotal + deliveryCharge;

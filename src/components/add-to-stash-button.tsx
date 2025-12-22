@@ -41,6 +41,7 @@ export default function AddToStashButton({
   const { addItem } = useCart();
   const [justAdded, setJustAdded] = useState(false);
   const [showCustomizeModal, setShowCustomizeModal] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   const isCustomizable = requiresCustomization(badges);
 
@@ -50,16 +51,26 @@ export default function AddToStashButton({
       return;
     }
     
-    addItem({ id, title, slug, priceText, imageUrl }, quantity);
+    const ok = addItem({ id, title, slug, priceText, imageUrl }, quantity);
+    if (!ok) {
+      setAddError("This item must be purchased alone. Please clear your stash to add it, or checkout to continue.");
+      window.setTimeout(() => setAddError(null), 2500);
+      return;
+    }
     setJustAdded(true);
     window.setTimeout(() => setJustAdded(false), 900);
   };
 
   const handleCustomizationConfirm = (customization: CustomizationData) => {
-    addItem(
+    const ok = addItem(
       { id, title, slug, priceText, imageUrl, customization },
       quantity
     );
+    if (!ok) {
+      setAddError("This item must be purchased alone. Please clear your stash to add it, or checkout to continue.");
+      window.setTimeout(() => setAddError(null), 2500);
+      return;
+    }
     setJustAdded(true);
     window.setTimeout(() => setJustAdded(false), 900);
     setShowCustomizeModal(false);
@@ -83,6 +94,12 @@ export default function AddToStashButton({
       >
         {label}
       </button>
+
+      {addError && (
+        <p className="mt-1 text-[11px] text-amber-700">
+          {addError}
+        </p>
+      )}
 
       {isCustomizable && (
         <CustomizeModal

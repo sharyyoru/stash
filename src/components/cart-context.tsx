@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -33,13 +34,15 @@ type CartContextValue = {
   totalCount: number;
   totalAmount: number;
   currency: string;
-  addItem: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
+  addItem: (item: Omit<CartItem, "quantity">, quantity?: number) => boolean;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clear: () => void;
 };
 
 const CartContext = createContext<CartContextValue | undefined>(undefined);
+
+const MAIL_CLUB_SLUG = "the-secret-stash-mail-club";
 
 function parsePriceFromText(priceText?: string): number | undefined {
   if (!priceText) return undefined;
@@ -59,6 +62,11 @@ function inferCurrency(priceText?: string): string | undefined {
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const itemsRef = useRef<CartItem[]>([]);
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -67,6 +75,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (!raw) return;
       const parsed = JSON.parse(raw) as CartItem[];
       if (Array.isArray(parsed)) {
+        itemsRef.current = parsed;
         setItems(parsed);
       }
     } catch {
@@ -84,54 +93,76 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [items]);
 
   const addItem: CartContextValue["addItem"] = (item, quantity = 1) => {
-    if (!item.id || quantity <= 0) return;
-    setItems((current) => {
-      // If item has customization, create a unique ID for it so each customized item is separate
-      const itemId = item.customization 
-        ? `${item.id}::custom::${Date.now()}`
-        : item.id;
-      
-      // For customized items, always add as new entry
-      if (item.customization) {
-        return [
+    if (!item.id || quantity <= 0) return false;
+
+    const current = itemsRef.current;
+    const cartHasMailClub = current.some((i) => i.slug === MAIL_CLUB_SLUG);
+    const cartHasOther = current.some((i) => i.slug !== MAIL_CLUB_SLUG);
+    const incomingIsMailClub = item.slug === MAIL_CLUB_SLUG;
+
+    if (cartHasMailClub && !incomingIsMailClub) {
+      return false;
+    }
+    if (cartHasOther && incomingIsMailClub) {
+      return false;
+    }
+
+    // If item has customization, create a unique ID for it so each customized item is separate
+    const itemId = item.customization 
+      ? `${item.id}::custom::${Date.now()}`
+      : item.id;
+
+    let next: CartItem[];
+
+    // For customized items, always add as new entry
+    if (item.customization) {
+      next = [
+        ...current,
+        {
+          ...item,
+          id: itemId,
+          quantity,
+        },
+      ];
+    } else {
+      // For regular items, check if already exists
+      const existing = current.find((i) => i.id === item.id && !i.customization);
+      if (existing) {
+        next = current.map((i) =>
+          i.id === item.id && !i.customization ? { ...i, quantity: i.quantity + quantity } : i,
+        );
+      } else {
+        next = [
           ...current,
           {
             ...item,
-            id: itemId,
             quantity,
           },
         ];
       }
-      
-      // For regular items, check if already exists
-      const existing = current.find((i) => i.id === item.id && !i.customization);
-      if (existing) {
-        return current.map((i) =>
-          i.id === item.id && !i.customization ? { ...i, quantity: i.quantity + quantity } : i,
-        );
-      }
-      return [
-        ...current,
-        {
-          ...item,
-          quantity,
-        },
-      ];
-    });
+    }
+
+    itemsRef.current = next;
+    setItems(next);
+
+    return true;
   };
 
   const removeItem: CartContextValue["removeItem"] = (id) => {
-    setItems((current) => current.filter((i) => i.id !== id));
+    const next = itemsRef.current.filter((i) => i.id !== id);
+    itemsRef.current = next;
+    setItems(next);
   };
 
   const updateQuantity: CartContextValue["updateQuantity"] = (id, quantity) => {
     if (quantity <= 0) return;
-    setItems((current) =>
-      current.map((i) => (i.id === id ? { ...i, quantity } : i)),
-    );
+    const next = itemsRef.current.map((i) => (i.id === id ? { ...i, quantity } : i));
+    itemsRef.current = next;
+    setItems(next);
   };
 
   const clear: CartContextValue["clear"] = () => {
+    itemsRef.current = [];
     setItems([]);
   };
 

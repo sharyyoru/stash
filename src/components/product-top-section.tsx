@@ -4,6 +4,8 @@ import { useState } from "react";
 import ProductImageGallery from "./product-image-gallery";
 import ProductAddToStash from "./product-add-to-stash";
 
+const MAIL_CLUB_SLUG = "the-secret-stash-mail-club";
+
 type ProductImage = {
   url?: string;
 };
@@ -104,7 +106,9 @@ export default function ProductTopSection({
         />
 
         <p className="text-xs text-neutral-500">
-          Ships from Dubai. Taxes and shipping calculated at checkout.
+          {slug === MAIL_CLUB_SLUG
+            ? "Ships from Dubai. International shipping is available for the Mail Club."
+            : "Ships from Dubai. UAE shipping only — international shipping is available for the Mail Club."}
         </p>
 
         {Array.isArray(descriptionParagraphs) &&

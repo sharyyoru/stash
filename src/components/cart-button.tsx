@@ -171,13 +171,17 @@ export default function CartButton({ label }: CartButtonProps) {
 
       // If we have a redirect URL from Ziina, redirect to payment page
       if (redirectUrl) {
-        clear();
+        if (!isMailClubOnly) {
+          clear();
+        }
         window.location.href = redirectUrl;
         return;
       }
 
       // Fallback: order created but no payment redirect (Ziina not configured)
-      clear();
+      if (!isMailClubOnly) {
+        clear();
+      }
       setCheckoutError("Order created. Payment gateway is being set up - we'll contact you.");
     } catch (error: any) {
       setCheckoutError(error?.message || "Could not create order. Please try again.");
