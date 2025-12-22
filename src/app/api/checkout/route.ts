@@ -6,6 +6,10 @@ import { createPaymentIntent, toBaseUnits } from "../../../lib/ziina";
 import { notifyNewOrder } from "../../../lib/email";
 import { getDeliveryCharge } from "../../../lib/delivery-charge";
 
+function isMailClubOnly(items: Array<{ slug?: string }>): boolean {
+  return items.length > 0 && items.every((item) => item.slug === "the-secret-stash-mail-club");
+}
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
 
@@ -26,7 +30,7 @@ export async function POST(req: NextRequest) {
 
   try {
     // Get delivery charge from Sanity settings
-    const deliveryCharge = await getDeliveryCharge();
+    const deliveryCharge = isMailClubOnly(items) ? 0 : await getDeliveryCharge();
     const totalAmount = subtotal + deliveryCharge;
 
     // 1. Create the order in our database

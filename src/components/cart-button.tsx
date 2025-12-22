@@ -36,8 +36,11 @@ export default function CartButton({ label }: CartButtonProps) {
       .catch(() => setDeliveryCharge(25));
   }, []);
 
+  const isMailClubOnly = items.length > 0 && items.every((item) => item.slug === "the-secret-stash-mail-club");
+  const effectiveDeliveryCharge = isMailClubOnly ? 0 : deliveryCharge;
+
   const subtotal = totalAmount;
-  const total = subtotal + deliveryCharge;
+  const total = subtotal + effectiveDeliveryCharge;
   const formattedSubtotal = subtotal > 0
     ? `${currency} ${subtotal.toFixed(2).replace(/\.00$/, "")}`
     : `${currency} 0`;
@@ -225,7 +228,7 @@ export default function CartButton({ label }: CartButtonProps) {
                       </div>
                       <div className="flex justify-between text-neutral-600">
                         <span>Delivery</span>
-                        <span>{currency} {deliveryCharge.toFixed(2)}</span>
+                        <span>{currency} {effectiveDeliveryCharge.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between pt-1 border-t border-neutral-200 font-bold text-[#b08968]">
                         <span>Total</span>
