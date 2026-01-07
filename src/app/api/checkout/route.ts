@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
     });
 
     // 2. Build redirect URLs
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    const baseUrl = process.env.NEXTAUTH_URL || "https://s-tash.store";
     const successUrl = `${baseUrl}/checkout/success?order_id=${order.id}&payment_intent_id={PAYMENT_INTENT_ID}`;
     const cancelUrl = `${baseUrl}/checkout/cancel?order_id=${order.id}`;
     const failureUrl = `${baseUrl}/checkout/failed?order_id=${order.id}`;

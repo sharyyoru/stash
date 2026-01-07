@@ -136,7 +136,7 @@ export async function notifyNewOrder(order: OrderEmailData): Promise<boolean> {
           </tbody>
         </table>
         
-        <p><a href="${process.env.NEXTAUTH_URL || 'https://stashcreative.ae'}/admin/orders" style="color: #b08968;">View in Admin Dashboard →</a></p>
+        <p><a href="${process.env.NEXTAUTH_URL || 'https://s-tash.store'}/admin/orders" style="color: #b08968;">View in Admin Dashboard →</a></p>
         
         <div class="footer">
           <p>This is an automated notification from Stash Creative.</p>
@@ -212,7 +212,7 @@ export async function notifyOrderPaid(order: OrderEmailData): Promise<boolean> {
           </tbody>
         </table>
         
-        <p><a href="${process.env.NEXTAUTH_URL || 'https://stashcreative.ae'}/admin/orders" style="color: #155724; font-weight: bold;">Create Shipment in Admin Dashboard →</a></p>
+        <p><a href="${process.env.NEXTAUTH_URL || 'https://s-tash.store'}/admin/orders" style="color: #155724; font-weight: bold;">Create Shipment in Admin Dashboard →</a></p>
         
         <div class="footer">
           <p>This is an automated notification from Stash Creative.</p>
