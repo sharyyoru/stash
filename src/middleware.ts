@@ -118,9 +118,9 @@ export function middleware(request: NextRequest) {
   if (hasTrackingParams) {
     url.search = params.toString();
     
-    // Use 301 redirect for permanent, cacheable redirect
-    // This helps with SEO and prevents duplicate content issues
-    return NextResponse.redirect(url, { status: 301 });
+    // Use 307 temporary redirect to avoid caching issues with social media crawlers
+    // This preserves the HTTP method and is more appropriate for UTM stripping
+    return NextResponse.redirect(url, { status: 307 });
   }
 
   return NextResponse.next();

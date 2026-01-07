@@ -179,6 +179,7 @@ export default function CustomizeModal({
                 src={productImageUrl}
                 alt={productTitle}
                 fill
+                sizes="128px"
                 className="object-cover"
               />
             </div>
@@ -220,6 +221,7 @@ export default function CustomizeModal({
                     src={previewUrl}
                     alt="Preview"
                     fill
+                    sizes="(max-width: 512px) 100vw, 512px"
                     className="object-contain"
                   />
                 </div>

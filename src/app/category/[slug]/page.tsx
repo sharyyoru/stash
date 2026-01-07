@@ -74,6 +74,8 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                   src={safeCategory.heroImageUrl}
                   alt={safeCategory.title}
                   fill
+                  sizes="(max-width: 768px) 100vw, 40vw"
+                  priority
                   className="object-cover"
                 />
               ) : (
@@ -118,6 +120,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                           src={product.imageUrl}
                           alt={product.title}
                           fill
+                          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
                           className="object-cover"
                         />
                       ) : (

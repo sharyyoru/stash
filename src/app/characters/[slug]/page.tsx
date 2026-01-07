@@ -54,6 +54,8 @@ export default async function CharacterPage({ params }: CharacterPageProps) {
                   src={character.cardImageUrl}
                   alt={character.title}
                   fill
+                  sizes="(max-width: 768px) 100vw, 384px"
+                  priority
                   className="object-contain drop-shadow-sm"
                 />
               ) : (
@@ -91,6 +93,7 @@ export default async function CharacterPage({ params }: CharacterPageProps) {
                         src={product.imageUrl}
                         alt={product.title}
                         fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
                         className="object-cover"
                       />
                     ) : (

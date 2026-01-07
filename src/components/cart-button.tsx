@@ -256,6 +256,7 @@ export default function CartButton({ label }: CartButtonProps) {
                             src={item.imageUrl}
                             alt={item.title}
                             fill
+                            sizes="48px"
                             className="object-cover"
                           />
                         ) : (

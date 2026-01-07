@@ -34,6 +34,8 @@ export default function ProductImageGallery({
               src={mainImage.url}
               alt={alt}
               fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              priority
               className="object-cover"
             />
           ) : (
@@ -60,6 +62,7 @@ export default function ProductImageGallery({
                   src={img.url}
                   alt={alt}
                   fill
+                  sizes="(max-width: 768px) 33vw, 120px"
                   className="object-cover"
                 />
               )}

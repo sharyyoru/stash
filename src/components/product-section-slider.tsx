@@ -137,6 +137,7 @@ export default function ProductSliderSection({
                         src={product.imageUrl}
                         alt={product.name}
                         fill
+                        sizes="(max-width: 768px) 220px, 220px"
                         className="object-cover"
                       />
                       <div className="absolute inset-x-2 top-2 flex items-start justify-between text-[10px] text-neutral-800">

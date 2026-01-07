@@ -158,6 +158,7 @@ export default function SearchButton({ suggestions }: SearchButtonProps) {
                             src={product.imageUrl}
                             alt={product.title}
                             fill
+                            sizes="48px"
                             className="object-cover"
                           />
                         ) : (
@@ -196,6 +197,7 @@ export default function SearchButton({ suggestions }: SearchButtonProps) {
                             src={product.imageUrl}
                             alt={product.title}
                             fill
+                            sizes="48px"
                             className="object-cover"
                           />
                         ) : (

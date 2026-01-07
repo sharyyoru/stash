@@ -187,6 +187,7 @@ export default function CharacterStrip({
                   src={character.imageSrc}
                   alt={character.name}
                   fill
+                  sizes="190px"
                   className="object-contain drop-shadow-sm"
                 />
               </div>

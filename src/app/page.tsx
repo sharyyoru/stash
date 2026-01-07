@@ -376,6 +376,7 @@ function Hero({ heading, subheading, shops }: HeroProps) {
                             src={shop.imageSrc}
                             alt={shop.title}
                             fill
+                            sizes="(max-width: 768px) 100vw, 25vw"
                             className="h-full w-full object-cover transition-opacity duration-300 group-hover:opacity-0"
                           />
                         )}
@@ -456,6 +457,7 @@ function CategoryGrid({ categories }: CategoryGridProps) {
                     src={category.imageSrc}
                     alt={category.name}
                     fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
                     className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                   />
                 </div>
