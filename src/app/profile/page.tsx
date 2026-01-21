@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "../api/auth/[...nextauth]/route";
 import ProfileClient from "./profile-client";
 import { listOrders, type Order } from "../../lib/orders-store";
+import { getUserSubscriptions, type Subscription } from "../../lib/subscriptions-store";
 
 export default async function ProfilePage() {
   const session = await getServerSession(authOptions);
@@ -13,9 +14,12 @@ export default async function ProfilePage() {
 
   const email = session.user.email;
   let orders: Order[] = [];
+  let subscriptions: Subscription[] = [];
+  
   if (email) {
     const all = await listOrders();
     orders = all.filter((order) => order.customer?.email === email);
+    subscriptions = await getUserSubscriptions(email);
   }
 
   return (
@@ -24,6 +28,7 @@ export default async function ProfilePage() {
       email={session.user.email}
       image={session.user.image}
       orders={orders}
+      subscriptions={subscriptions}
     />
   );
 }

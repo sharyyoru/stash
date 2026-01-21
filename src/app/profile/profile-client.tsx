@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
+import Link from "next/link";
 import type { Order, OrderStatus } from "../../lib/orders-store";
+import type { Subscription, SubscriptionStatus } from "../../lib/subscriptions-store";
 
 const STORAGE_PREFIX = "stash_profile_address";
 
@@ -11,6 +13,7 @@ type ProfileClientProps = {
   email?: string | null;
   image?: string | null;
   orders?: Order[];
+  subscriptions?: Subscription[];
 };
 
 type Address = {
@@ -37,7 +40,7 @@ const emptyAddress: Address = {
   whatsappSameAsMobile: true,
 };
 
-export default function ProfileClient({ name, email, image, orders = [] }: ProfileClientProps) {
+export default function ProfileClient({ name, email, image, orders = [], subscriptions = [] }: ProfileClientProps) {
   const [address, setAddress] = useState<Address>(emptyAddress);
   const [status, setStatus] = useState<string>("");
 
@@ -112,6 +115,7 @@ export default function ProfileClient({ name, email, image, orders = [] }: Profi
   const initial = firstName ? firstName.charAt(0).toUpperCase() : "";
 
   const hasOrders = Array.isArray(orders) && orders.length > 0;
+  const hasSubscriptions = Array.isArray(subscriptions) && subscriptions.length > 0;
 
   const statusLabel = (status: OrderStatus): string => {
     switch (status) {
@@ -126,6 +130,46 @@ export default function ProfileClient({ name, email, image, orders = [] }: Profi
       default:
         return status;
     }
+  };
+
+  const subscriptionStatusLabel = (status: SubscriptionStatus): string => {
+    switch (status) {
+      case "active":
+        return "Active";
+      case "paused":
+        return "Paused";
+      case "cancelled":
+        return "Cancelled";
+      case "past_due":
+        return "Past Due";
+      case "pending":
+        return "Pending";
+      default:
+        return status;
+    }
+  };
+
+  const subscriptionStatusColor = (status: SubscriptionStatus): string => {
+    switch (status) {
+      case "active":
+        return "bg-emerald-500";
+      case "paused":
+        return "bg-amber-500";
+      case "cancelled":
+        return "bg-neutral-400";
+      case "past_due":
+        return "bg-red-500";
+      case "pending":
+        return "bg-blue-500";
+      default:
+        return "bg-neutral-500";
+    }
+  };
+
+  const getOrdinalSuffix = (n: number): string => {
+    const s = ["th", "st", "nd", "rd"];
+    const v = n % 100;
+    return s[(v - 20) % 10] || s[v] || s[0];
   };
 
   const formatOrderDate = (iso: string): string => {
@@ -181,6 +225,69 @@ export default function ProfileClient({ name, email, image, orders = [] }: Profi
             Log out
           </button>
         </div>
+
+        {/* Subscriptions Section */}
+        {hasSubscriptions && (
+          <div className="space-y-3 rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50 p-5 text-sm shadow-sm ring-1 ring-amber-200">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-[0.2em] text-amber-700">
+                  My Subscriptions
+                </p>
+                <p className="text-xs text-amber-600">
+                  Your active monthly subscriptions
+                </p>
+              </div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-400">
+                <svg className="h-5 w-5 text-amber-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {subscriptions.map((sub) => (
+                <div
+                  key={sub.id}
+                  className="space-y-2 rounded-2xl border border-amber-200 bg-white p-4"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium text-neutral-900">{sub.productTitle}</p>
+                      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-400">
+                        {sub.id}
+                      </p>
+                    </div>
+                    <span className={`rounded-full ${subscriptionStatusColor(sub.status)} px-2 py-0.5 text-[10px] font-semibold text-white`}>
+                      {subscriptionStatusLabel(sub.status)}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div>
+                      <p className="text-neutral-500">Monthly Amount</p>
+                      <p className="font-medium text-neutral-900">{sub.currency} {sub.amount.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-neutral-500">Billing Day</p>
+                      <p className="font-medium text-neutral-900">{sub.billingDay}{getOrdinalSuffix(sub.billingDay)} of each month</p>
+                    </div>
+                  </div>
+                  {sub.status === "active" && sub.nextBillingDate && (
+                    <div className="rounded-xl bg-amber-50 p-2 text-[11px]">
+                      <p className="text-amber-700">
+                        <span className="font-medium">Next billing:</span>{" "}
+                        {new Date(sub.nextBillingDate).toLocaleDateString("en-AE", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid gap-6 md:grid-cols-[minmax(0,2fr)_minmax(0,1.5fr)]">
           <form
