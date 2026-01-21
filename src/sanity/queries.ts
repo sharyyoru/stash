@@ -112,7 +112,10 @@ export const productBySlugQuery = groq`*[_type == "product" && slug.current == $
     "slug": slug.current,
     tagline,
     cardImage
-  }
+  },
+  isSubscription,
+  subscriptionPrice,
+  "isSubscriptionCategory": category->isSubscriptionCategory
 }`;
 
 export const productsByCategoryQuery = groq`*[_type == "product" && category->slug.current == $slug]{

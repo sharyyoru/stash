@@ -133,6 +133,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
           images={images}
           variants={variants}
           descriptionParagraphs={descriptionParagraphs}
+          isSubscription={product.isSubscription || product.isSubscriptionCategory}
+          subscriptionPrice={product.subscriptionPrice}
         />
 
         <section className="grid gap-4 md:grid-cols-2">

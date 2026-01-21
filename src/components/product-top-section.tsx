@@ -3,6 +3,7 @@
 import { useState } from "react";
 import ProductImageGallery from "./product-image-gallery";
 import ProductAddToStash from "./product-add-to-stash";
+import ProductSubscribeButton from "./product-subscribe-button";
 
 const MAIL_CLUB_SLUG = "the-secret-stash-mail-club";
 
@@ -29,6 +30,8 @@ type ProductTopSectionProps = {
   images: ProductImage[];
   variants?: VariantOption[];
   descriptionParagraphs?: string[];
+  isSubscription?: boolean;
+  subscriptionPrice?: number;
 };
 
 export default function ProductTopSection({
@@ -43,6 +46,8 @@ export default function ProductTopSection({
   images,
   variants,
   descriptionParagraphs,
+  isSubscription,
+  subscriptionPrice,
 }: ProductTopSectionProps) {
   const hasVariants = Array.isArray(variants) && variants.length > 0;
   const initialVariant = hasVariants ? variants![0] : null;
@@ -93,17 +98,29 @@ export default function ProductTopSection({
           <p className="text-sm text-neutral-700">{shortDescription}</p>
         )}
 
-        <ProductAddToStash
-          id={id}
-          title={title}
-          slug={slug}
-          priceText={basePriceText}
-          imageUrl={imagesForGallery[0]?.url}
-          currency={currency}
-          badges={badges}
-          variants={variants}
-          onVariantChange={setSelectedVariantForImages}
-        />
+        {isSubscription ? (
+          <ProductSubscribeButton
+            id={id}
+            title={title}
+            slug={slug}
+            price={price}
+            subscriptionPrice={subscriptionPrice}
+            currency={currency}
+            imageUrl={imagesForGallery[0]?.url}
+          />
+        ) : (
+          <ProductAddToStash
+            id={id}
+            title={title}
+            slug={slug}
+            priceText={basePriceText}
+            imageUrl={imagesForGallery[0]?.url}
+            currency={currency}
+            badges={badges}
+            variants={variants}
+            onVariantChange={setSelectedVariantForImages}
+          />
+        )}
 
         <p className="text-xs text-neutral-500">
           {slug === MAIL_CLUB_SLUG
