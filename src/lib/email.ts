@@ -373,3 +373,90 @@ export async function notifyShipmentDelivered(order: OrderEmailData & { awbNumbe
   
   return adminSent || customerSent;
 }
+
+type SubscriptionEmailData = {
+  subscriptionId: string;
+  customerName?: string;
+  customerEmail?: string;
+  productTitle: string;
+  amount: number;
+  currency: string;
+  nextBillingDate: string;
+  billingDay: number;
+};
+
+/**
+ * Send notification when a subscription is activated (to admin and customer)
+ */
+export async function notifySubscriptionActivated(subscription: SubscriptionEmailData): Promise<boolean> {
+  const adminSubject = `🔄 New Subscription: ${subscription.subscriptionId}`;
+  const customerSubject = `Welcome to your ${subscription.productTitle} subscription! 🎉`;
+  
+  const baseUrl = process.env.NEXTAUTH_URL || "https://s-tash.store";
+  const nextBillingFormatted = new Date(subscription.nextBillingDate).toLocaleDateString("en-AE", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  
+  const adminHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.6; color: #333;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: #fff3e0; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+          <p style="font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 1px;">${subscription.subscriptionId}</p>
+          <p style="font-size: 18px; font-weight: bold; color: #e65100;">New Subscription Activated</p>
+          <p style="font-size: 14px;"><strong>Product:</strong> ${subscription.productTitle}</p>
+          <p style="font-size: 14px;"><strong>Amount:</strong> ${subscription.currency} ${subscription.amount.toFixed(2)}/month</p>
+        </div>
+        <p><strong>Customer:</strong> ${subscription.customerName || 'N/A'} (${subscription.customerEmail || 'N/A'})</p>
+        <p><strong>Billing Day:</strong> ${subscription.billingDay}${getOrdinalSuffix(subscription.billingDay)} of each month</p>
+        <p><strong>Next Billing:</strong> ${nextBillingFormatted}</p>
+        <p><a href="${baseUrl}/admin/subscriptions" style="color: #e65100;">View in Admin →</a></p>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  const customerHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.6; color: #333;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: #fff3e0; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+          <p style="font-size: 24px; margin: 0;">🔄</p>
+          <h2 style="color: #e65100; margin: 10px 0;">Subscription Active!</h2>
+          <p style="color: #666;">${subscription.productTitle}</p>
+        </div>
+        <p>Hi ${subscription.customerName || 'there'},</p>
+        <p>Thank you for subscribing to <strong>${subscription.productTitle}</strong>!</p>
+        <p>Your subscription details:</p>
+        <ul>
+          <li><strong>Monthly Amount:</strong> ${subscription.currency} ${subscription.amount.toFixed(2)}</li>
+          <li><strong>Billing Day:</strong> ${subscription.billingDay}${getOrdinalSuffix(subscription.billingDay)} of each month</li>
+          <li><strong>Next Billing Date:</strong> ${nextBillingFormatted}</li>
+        </ul>
+        <p>You'll receive a payment link via email on your billing day each month.</p>
+        <p style="margin-top: 30px;">Thank you for being part of The Secret Stash! 💚</p>
+        <div style="font-size: 12px; color: #999; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+          <p>Stash Creative - Thoughtful stationery for creative souls</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const adminSent = ADMIN_EMAILS.length > 0 ? await sendEmail(ADMIN_EMAILS, adminSubject, adminHtml) : false;
+  const customerSent = subscription.customerEmail ? await sendEmail([subscription.customerEmail], customerSubject, customerHtml) : false;
+  
+  return adminSent || customerSent;
+}
+
+function getOrdinalSuffix(n: number): string {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return s[(v - 20) % 10] || s[v] || s[0];
+}

@@ -123,8 +123,12 @@ export const productsByCategoryQuery = groq`*[_type == "product" && category->sl
   currency,
   shortDescription,
   "category": category->title,
+  "categorySlug": category->slug.current,
   badges,
-  "imageUrl": images[0].asset->url
+  "imageUrl": images[0].asset->url,
+  isSubscription,
+  subscriptionPrice,
+  "isSubscriptionCategory": category->isSubscriptionCategory
 }`;
 
 export const categoryBySlugQuery = groq`*[_type == "category" && slug.current == $slug][0]{
@@ -132,7 +136,8 @@ export const categoryBySlugQuery = groq`*[_type == "category" && slug.current ==
   title,
   "slug": slug.current,
   description,
-  "heroImageUrl": heroImage.asset->url
+  "heroImageUrl": heroImage.asset->url,
+  isSubscriptionCategory
 }`;
 
 export const characterBySlugQuery = (slug: string) => groq`*[_type == "character" && slug.current == "${slug}"][0]{

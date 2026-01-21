@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { sanityClient } from "../../../sanity/client";
 import AllProductsGrid from "../../../components/all-products-grid";
+import SubscriptionProductGrid from "../../../components/subscription-product-grid";
 import {
   categoryBySlugQuery,
   productsByCategoryQuery,
@@ -105,6 +106,8 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
               showBadgeFilter={false}
               showCategoryFilter={false}
             />
+          ) : safeCategory.isSubscriptionCategory ? (
+            <SubscriptionProductGrid products={safeProducts as any[]} />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
               {safeProducts.length > 0 ? (

@@ -88,6 +88,20 @@ export const productType = defineType({
       type: "reference",
       to: [{ type: "character" }],
     }),
+    defineField({
+      name: "isSubscription",
+      title: "Subscription Product",
+      type: "boolean",
+      description: "Enable this for products that require monthly subscription payments",
+      initialValue: false,
+    }),
+    defineField({
+      name: "subscriptionPrice",
+      title: "Monthly Subscription Price",
+      type: "number",
+      description: "Monthly price for subscription products. If not set, uses the regular price.",
+      hidden: ({ parent }) => !parent?.isSubscription,
+    }),
   ],
 });
 
@@ -117,6 +131,13 @@ export const categoryType = defineType({
       type: "number",
       description:
         "Fallback weight per product in this category if the product's shipping weight is not set.",
+    }),
+    defineField({
+      name: "isSubscriptionCategory",
+      title: "Subscription Category",
+      type: "boolean",
+      description: "All products in this category will be treated as subscription products",
+      initialValue: false,
     }),
   ],
 });
