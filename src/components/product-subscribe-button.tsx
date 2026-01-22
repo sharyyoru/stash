@@ -132,12 +132,16 @@ export default function ProductSubscribeButton({
         <p className="text-[10px] text-center text-neutral-400">
           This is a subscription product. It will not be added to your stash.
         </p>
+        <p className="mt-1 text-[10px] text-center font-medium text-emerald-600">
+          Free Shipping
+        </p>
       </div>
 
       <AddressCompletionModal
         open={showAddressModal}
         onClose={() => setShowAddressModal(false)}
         onComplete={handleAddressComplete}
+        email={session?.user?.email}
       />
     </>
   );

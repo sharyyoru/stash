@@ -19,6 +19,7 @@ type ProfileClientProps = {
 type Address = {
   line1: string;
   line2: string;
+  landmark: string;
   city: string;
   state: string;
   postalCode: string;
@@ -26,11 +27,13 @@ type Address = {
   mobile: string;
   whatsapp: string;
   whatsappSameAsMobile: boolean;
+  dateOfBirth: string;
 };
 
 const emptyAddress: Address = {
   line1: "",
   line2: "",
+  landmark: "",
   city: "",
   state: "",
   postalCode: "",
@@ -38,6 +41,7 @@ const emptyAddress: Address = {
   mobile: "",
   whatsapp: "",
   whatsappSameAsMobile: true,
+  dateOfBirth: "",
 };
 
 export default function ProfileClient({ name, email, image, orders = [], subscriptions = [] }: ProfileClientProps) {
@@ -60,6 +64,7 @@ export default function ProfileClient({ name, email, image, orders = [], subscri
         ...prev,
         line1: parsed.line1 ?? prev.line1,
         line2: parsed.line2 ?? prev.line2,
+        landmark: parsed.landmark ?? prev.landmark,
         city: parsed.city ?? prev.city,
         state: parsed.state ?? prev.state,
         postalCode: parsed.postalCode ?? prev.postalCode,
@@ -70,6 +75,7 @@ export default function ProfileClient({ name, email, image, orders = [], subscri
           typeof parsed.whatsappSameAsMobile === "boolean"
             ? parsed.whatsappSameAsMobile
             : prev.whatsappSameAsMobile,
+        dateOfBirth: parsed.dateOfBirth ?? prev.dateOfBirth,
       }));
     } catch {
       // ignore
@@ -330,6 +336,20 @@ export default function ProfileClient({ name, email, image, orders = [], subscri
                 />
               </div>
 
+              <div className="space-y-1">
+                <label htmlFor="landmark" className="text-xs font-medium text-neutral-700">
+                  Landmark (optional)
+                </label>
+                <input
+                  id="landmark"
+                  type="text"
+                  value={address.landmark}
+                  onChange={(e) => handleChange("landmark", e.target.value)}
+                  placeholder="Near mall, opposite park, etc."
+                  className="w-full rounded-full border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 shadow-sm outline-none focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200"
+                />
+              </div>
+
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-1">
                   <label htmlFor="city" className="text-xs font-medium text-neutral-700">
@@ -419,6 +439,19 @@ export default function ProfileClient({ name, email, image, orders = [], subscri
                     <span>My WhatsApp number is the same as my mobile number</span>
                   </label>
                 </div>
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="dob" className="text-xs font-medium text-neutral-700">
+                  Date of Birth (optional)
+                </label>
+                <input
+                  id="dob"
+                  type="date"
+                  value={address.dateOfBirth}
+                  onChange={(e) => handleChange("dateOfBirth", e.target.value)}
+                  className="w-full rounded-full border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 shadow-sm outline-none focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200"
+                />
               </div>
             </div>
 

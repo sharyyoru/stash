@@ -146,12 +146,16 @@ export default function SubscriptionProductCard({ product }: SubscriptionProduct
         <p className="mt-2 text-[10px] text-center text-neutral-400">
           Billed monthly on the day you subscribe
         </p>
+        <p className="mt-1 text-[10px] text-center font-medium text-emerald-600">
+          Free Shipping
+        </p>
       </div>
 
       <AddressCompletionModal
         open={showAddressModal}
         onClose={() => setShowAddressModal(false)}
         onComplete={handleAddressComplete}
+        email={session?.user?.email}
       />
     </>
   );

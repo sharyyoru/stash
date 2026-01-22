@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 export type Address = {
   line1: string;
   line2: string;
+  landmark: string;
   city: string;
   state: string;
   postalCode: string;
@@ -12,11 +13,13 @@ export type Address = {
   mobile: string;
   whatsapp: string;
   whatsappSameAsMobile: boolean;
+  dateOfBirth: string;
 };
 
 const emptyAddress: Address = {
   line1: "",
   line2: "",
+  landmark: "",
   city: "",
   state: "",
   postalCode: "",
@@ -24,6 +27,7 @@ const emptyAddress: Address = {
   mobile: "",
   whatsapp: "",
   whatsappSameAsMobile: true,
+  dateOfBirth: "",
 };
 
 const REQUIRED_FIELDS: (keyof Address)[] = ["line1", "mobile", "city", "state"];
@@ -193,6 +197,20 @@ export default function AddressCompletionModal({
               />
             </div>
 
+            <div className="space-y-1">
+              <label htmlFor="modal-landmark" className="text-xs font-medium text-neutral-700">
+                Landmark (optional)
+              </label>
+              <input
+                id="modal-landmark"
+                type="text"
+                value={address.landmark}
+                onChange={(e) => handleChange("landmark", e.target.value)}
+                placeholder="Near mall, opposite park, etc."
+                className="w-full rounded-full border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 shadow-sm outline-none focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200"
+              />
+            </div>
+
             <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
               <div className="space-y-1">
                 <label htmlFor="modal-city" className="text-xs font-medium text-neutral-700">
@@ -264,6 +282,19 @@ export default function AddressCompletionModal({
                 />
                 <span>Same as mobile</span>
               </label>
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="modal-dob" className="text-xs font-medium text-neutral-700">
+                Date of Birth (optional)
+              </label>
+              <input
+                id="modal-dob"
+                type="date"
+                value={address.dateOfBirth}
+                onChange={(e) => handleChange("dateOfBirth", e.target.value)}
+                className="w-full rounded-full border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 shadow-sm outline-none focus:border-neutral-300 focus:ring-2 focus:ring-neutral-200"
+              />
             </div>
           </div>
 
