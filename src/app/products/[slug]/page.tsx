@@ -149,11 +149,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
             <div className="mt-3 space-y-2 text-sm text-neutral-700">
               <p>Packed with care so your stash arrives in display-ready shape.</p>
               <p>Orders ship within 3–5 business days from Dubai, UAE.</p>
-              {slug === MAIL_CLUB_SLUG ? (
+              {slug === MAIL_CLUB_SLUG || product.isSubscription || product.isSubscriptionCategory ? (
                 <>
-                  <p>International shipping is available for the Mail Club.</p>
-                  <p className="pt-2 border-t border-neutral-100 font-medium text-neutral-900">
-                    Delivery charge: Free (Mail Club only)
+                  <p>International shipping is available for subscriptions.</p>
+                  <p className="pt-2 border-t border-neutral-100 font-medium text-emerald-600">
+                    Delivery charge: Free (Subscription)
                   </p>
                 </>
               ) : (
