@@ -21,6 +21,20 @@ export type Subscription = {
   // Payment tracking
   currentPaymentIntentId?: string;
   lastPaymentStatus?: string;
+  // Renewal tracking
+  renewalReminderSent?: boolean;
+  lastRenewalReminderDate?: string;
+};
+
+export type SubscriptionDelivery = {
+  id: string;
+  subscriptionId: string;
+  createdAt: string;
+  billingMonth: string; // YYYY-MM format
+  deliveryStatus: "pending" | "shipped" | "delivered";
+  deliveredAt?: string;
+  notes?: string;
+  awbNumber?: string;
 };
 
 export type SubscriptionPayment = {
@@ -66,6 +80,21 @@ function mapRowToSubscription(row: any): Subscription {
     profile: row.profile ?? undefined,
     currentPaymentIntentId: row.current_payment_intent_id ?? undefined,
     lastPaymentStatus: row.last_payment_status ?? undefined,
+    renewalReminderSent: row.renewal_reminder_sent ?? false,
+    lastRenewalReminderDate: row.last_renewal_reminder_date ?? undefined,
+  };
+}
+
+function mapRowToDelivery(row: any): SubscriptionDelivery {
+  return {
+    id: row.id,
+    subscriptionId: row.subscription_id,
+    createdAt: row.created_at,
+    billingMonth: row.billing_month,
+    deliveryStatus: row.delivery_status,
+    deliveredAt: row.delivered_at ?? undefined,
+    notes: row.notes ?? undefined,
+    awbNumber: row.awb_number ?? undefined,
   };
 }
 
@@ -325,4 +354,151 @@ export async function getSubscriptionPayments(
 
   if (error || !data) return [];
   return data.map(mapRowToPayment);
+}
+
+// Subscription Delivery Tracking
+
+function generateDeliveryId(): string {
+  const now = Date.now().toString(36);
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `DEL-${now}-${rand}`.toUpperCase();
+}
+
+export async function createSubscriptionDelivery(
+  subscriptionId: string,
+  billingMonth: string
+): Promise<SubscriptionDelivery> {
+  const id = generateDeliveryId();
+  const createdAt = new Date().toISOString();
+
+  const { data, error } = await supabaseAdmin
+    .from("subscription_deliveries")
+    .insert({
+      id,
+      subscription_id: subscriptionId,
+      created_at: createdAt,
+      billing_month: billingMonth,
+      delivery_status: "pending",
+    })
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    console.error("Failed to create subscription delivery:", error);
+    throw new Error("Failed to create subscription delivery");
+  }
+
+  return mapRowToDelivery(data);
+}
+
+export async function updateSubscriptionDelivery(
+  id: string,
+  updates: Partial<Pick<SubscriptionDelivery, "deliveryStatus" | "deliveredAt" | "notes" | "awbNumber">>
+): Promise<SubscriptionDelivery | null> {
+  const updateData: Record<string, any> = {};
+  if (updates.deliveryStatus) updateData.delivery_status = updates.deliveryStatus;
+  if (updates.deliveredAt) updateData.delivered_at = updates.deliveredAt;
+  if (updates.notes !== undefined) updateData.notes = updates.notes;
+  if (updates.awbNumber !== undefined) updateData.awb_number = updates.awbNumber;
+
+  const { data, error } = await supabaseAdmin
+    .from("subscription_deliveries")
+    .update(updateData)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return mapRowToDelivery(data);
+}
+
+export async function getSubscriptionDeliveries(
+  subscriptionId: string
+): Promise<SubscriptionDelivery[]> {
+  const { data, error } = await supabaseAdmin
+    .from("subscription_deliveries")
+    .select("*")
+    .eq("subscription_id", subscriptionId)
+    .order("billing_month", { ascending: false });
+
+  if (error || !data) return [];
+  return data.map(mapRowToDelivery);
+}
+
+export async function getAllSubscriptionDeliveries(): Promise<SubscriptionDelivery[]> {
+  const { data, error } = await supabaseAdmin
+    .from("subscription_deliveries")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error || !data) return [];
+  return data.map(mapRowToDelivery);
+}
+
+// Renewal Management
+
+export async function getSubscriptionsNeedingRenewal(daysAhead: number = 3): Promise<Subscription[]> {
+  const today = new Date();
+  const futureDate = new Date(today);
+  futureDate.setDate(futureDate.getDate() + daysAhead);
+  const futureDateStr = futureDate.toISOString().split("T")[0];
+  
+  const { data, error } = await supabaseAdmin
+    .from("subscriptions")
+    .select("*")
+    .eq("status", "active")
+    .lte("next_billing_date", futureDateStr)
+    .or("renewal_reminder_sent.is.null,renewal_reminder_sent.eq.false");
+
+  if (error || !data) return [];
+  return data.map(mapRowToSubscription);
+}
+
+export async function markRenewalReminderSent(id: string): Promise<Subscription | null> {
+  const { data, error } = await supabaseAdmin
+    .from("subscriptions")
+    .update({
+      renewal_reminder_sent: true,
+      last_renewal_reminder_date: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return mapRowToSubscription(data);
+}
+
+export async function resetRenewalReminder(id: string): Promise<Subscription | null> {
+  const { data, error } = await supabaseAdmin
+    .from("subscriptions")
+    .update({
+      renewal_reminder_sent: false,
+    })
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return mapRowToSubscription(data);
+}
+
+export async function updateSubscription(
+  id: string,
+  updates: Partial<Pick<Subscription, "status" | "nextBillingDate" | "amount">>
+): Promise<Subscription | null> {
+  const updateData: Record<string, any> = {};
+  if (updates.status) updateData.status = updates.status;
+  if (updates.nextBillingDate) updateData.next_billing_date = updates.nextBillingDate;
+  if (updates.amount !== undefined) updateData.amount = updates.amount;
+
+  const { data, error } = await supabaseAdmin
+    .from("subscriptions")
+    .update(updateData)
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return mapRowToSubscription(data);
 }

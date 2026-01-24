@@ -460,3 +460,127 @@ function getOrdinalSuffix(n: number): string {
   const v = n % 100;
   return s[(v - 20) % 10] || s[v] || s[0];
 }
+
+type SubscriptionRenewalEmailData = {
+  subscriptionId: string;
+  customerName?: string;
+  customerEmail: string;
+  productTitle: string;
+  amount: number;
+  currency: string;
+  renewalDate: string;
+  paymentLink: string;
+  daysUntilExpiry: number;
+};
+
+/**
+ * Send renewal reminder email to subscriber with payment link
+ */
+export async function notifySubscriptionRenewal(data: SubscriptionRenewalEmailData): Promise<boolean> {
+  const subject = `🔄 Your ${data.productTitle} subscription renewal is due`;
+  
+  const renewalDateFormatted = new Date(data.renewalDate).toLocaleDateString("en-AE", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  
+  const urgencyText = data.daysUntilExpiry <= 1 
+    ? "Your subscription expires today!" 
+    : data.daysUntilExpiry <= 3 
+      ? `Your subscription expires in ${data.daysUntilExpiry} days` 
+      : `Your subscription renews on ${renewalDateFormatted}`;
+  
+  const urgencyColor = data.daysUntilExpiry <= 1 ? "#dc2626" : data.daysUntilExpiry <= 3 ? "#ea580c" : "#059669";
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 30px; border-radius: 16px; margin-bottom: 20px; text-align: center;">
+          <p style="font-size: 40px; margin: 0;">🔄</p>
+          <h2 style="color: #92400e; margin: 15px 0 10px 0; font-size: 22px;">Time to Renew!</h2>
+          <p style="color: #78350f; margin: 0; font-size: 14px;">${data.productTitle}</p>
+        </div>
+        
+        <p style="font-size: 15px;">Hi ${data.customerName || 'there'},</p>
+        
+        <div style="background: #f8fafc; border-left: 4px solid ${urgencyColor}; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+          <p style="margin: 0; font-weight: 600; color: ${urgencyColor};">${urgencyText}</p>
+        </div>
+        
+        <p style="font-size: 15px;">To continue enjoying your subscription benefits, please renew now:</p>
+        
+        <div style="background: #f1f5f9; padding: 20px; border-radius: 12px; margin: 20px 0;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Subscription</td>
+              <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #1e293b;">${data.productTitle}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Amount</td>
+              <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #1e293b;">${data.currency} ${data.amount.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Renewal Date</td>
+              <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #1e293b;">${renewalDateFormatted}</td>
+            </tr>
+          </table>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${data.paymentLink}" style="display: inline-block; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: #1e293b; text-decoration: none; padding: 16px 40px; border-radius: 50px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 14px rgba(251, 191, 36, 0.4);">
+            Renew Now - ${data.currency} ${data.amount.toFixed(2)}
+          </a>
+        </div>
+        
+        <p style="font-size: 13px; color: #64748b; text-align: center;">
+          This payment link is valid for 24 hours. If you have any questions, please contact us.
+        </p>
+        
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center;">
+          <p style="font-size: 12px; color: #94a3b8; margin: 0;">Thank you for being part of The Secret Stash! 💚</p>
+          <p style="font-size: 11px; color: #cbd5e1; margin: 10px 0 0 0;">Stash Creative - Thoughtful stationery for creative souls</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail([data.customerEmail], subject, html);
+}
+
+/**
+ * Send notification to admins about subscription renewal
+ */
+export async function notifyAdminSubscriptionRenewal(data: SubscriptionRenewalEmailData & { renewalStatus: string }): Promise<boolean> {
+  if (ADMIN_EMAILS.length === 0) return false;
+  
+  const subject = `🔄 Subscription Renewal: ${data.subscriptionId}`;
+  const baseUrl = process.env.NEXTAUTH_URL || "https://s-tash.store";
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.6; color: #333;">
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: #fef3c7; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+          <p style="font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 1px;">${data.subscriptionId}</p>
+          <p style="font-size: 18px; font-weight: bold; color: #92400e;">Subscription Renewal Due</p>
+          <p style="font-size: 14px;"><strong>Product:</strong> ${data.productTitle}</p>
+          <p style="font-size: 14px;"><strong>Amount:</strong> ${data.currency} ${data.amount.toFixed(2)}</p>
+        </div>
+        <p><strong>Customer:</strong> ${data.customerName || 'N/A'} (${data.customerEmail})</p>
+        <p><strong>Renewal Date:</strong> ${data.renewalDate}</p>
+        <p><strong>Status:</strong> ${data.renewalStatus}</p>
+        <p><a href="${baseUrl}/admin/subscriptions" style="color: #92400e;">Manage in Admin →</a></p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail(ADMIN_EMAILS, subject, html);
+}

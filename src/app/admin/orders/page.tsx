@@ -132,13 +132,22 @@ export default async function AdminOrdersPage({
           </div>
           <div className="flex items-center gap-4">
             <Link
+              href="/admin/subscriptions"
+              className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 shadow-sm hover:bg-amber-100"
+            >
+              <svg className="mr-1.5 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Subscriptions
+            </Link>
+            <Link
               href="/admin/deliveries"
               className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 shadow-sm hover:bg-blue-100"
             >
               <svg className="mr-1.5 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m13-8l-8 8-4-4" />
               </svg>
-              Delivery Dashboard
+              Deliveries
             </Link>
             <p className="text-xs text-neutral-600">Signed in as {email}</p>
           </div>

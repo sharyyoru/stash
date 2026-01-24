@@ -105,18 +105,6 @@ export default function ProductSubscribeButton({
           <span className="text-sm text-neutral-500">/month</span>
         </div>
 
-        <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3 space-y-1">
-          <p className="text-xs font-semibold text-amber-800 flex items-center gap-1.5">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Monthly Subscription
-          </p>
-          <p className="text-[11px] text-amber-700">
-            Billed monthly on the day you subscribe. Cancel anytime.
-          </p>
-        </div>
-
         {error && (
           <p className="text-xs text-red-600">{error}</p>
         )}
