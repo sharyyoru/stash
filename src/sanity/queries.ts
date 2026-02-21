@@ -329,7 +329,7 @@ export const secretStashPageQuery = groq`*[_type == "secretStashPage"][0]{
     savings,
     isPopular
   },
-  cancellationPolicy
+  "cancellationPolicy": cancellationPolicyText
 }`;
 
 export const recapItemsQuery = groq`*[_type == "recapItem" && isAvailable == true] | order(publishedAt desc) {

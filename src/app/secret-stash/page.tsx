@@ -8,11 +8,11 @@ type SecretStashPageData = {
   title?: string;
   subtitle?: string;
   heading?: string;
-  tagline?: string;
+  tagline?: any[];
   gallery?: { url: string }[];
   benefits?: { _key: string; title: string; description: string }[];
   content?: any[];
-  shippingNote?: string;
+  shippingNote?: any[];
   currency?: string;
   pricingTiers?: {
     _key: string;

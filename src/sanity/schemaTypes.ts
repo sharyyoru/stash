@@ -547,9 +547,9 @@ export const secretStashPageType = defineType({
     defineField({
       name: "tagline",
       title: "Tagline",
-      type: "text",
-      rows: 2,
-      description: "Short intro text about what subscribers receive",
+      type: "array",
+      of: [{ type: "block" }],
+      description: "Short intro text about what subscribers receive (supports bold, line breaks, etc.)",
     }),
     defineField({
       name: "cancellationPolicyText",
@@ -602,9 +602,9 @@ export const secretStashPageType = defineType({
     defineField({
       name: "shippingNote",
       title: "Shipping Note",
-      type: "text",
-      rows: 2,
-      description: "Note about when items are shipped",
+      type: "array",
+      of: [{ type: "block" }],
+      description: "Note about when items are shipped (supports bold, line breaks, etc.)",
     }),
     defineField({
       name: "currency",

@@ -21,11 +21,11 @@ type SecretStashPageData = {
   title?: string;
   subtitle?: string;
   heading?: string;
-  tagline?: string;
+  tagline?: any[];
   gallery?: { url: string }[];
   benefits?: { _key: string; title: string; description: string }[];
   content?: any[];
-  shippingNote?: string;
+  shippingNote?: any[];
   currency?: string;
   pricingTiers?: PricingTier[];
   cancellationPolicy?: string;
@@ -126,16 +126,14 @@ export default function SecretStashClient({
   // Default content if Sanity data not yet configured
   const defaultSubtitle = pageData?.subtitle || "SUBSCRIPTION";
   const defaultHeading = pageData?.heading || "Secret Stash Mail Club";
-  const defaultTagline =
-    pageData?.tagline ||
-    "Once a month, members receive a carefully curated envelope filled with exclusive stationery surprises.";
+  const defaultTaglineText = "Once a month, members receive a carefully curated envelope filled with exclusive stationery surprises.";
 
   return (
     <div className="bg-[#fdf8f3] min-h-screen">
       <div className="mx-auto max-w-6xl px-4 py-10">
         <div className="grid gap-10 lg:grid-cols-2">
-          {/* Left Column - Gallery */}
-          <div className="space-y-4">
+          {/* Left Column - Gallery (Sticky on Desktop) */}
+          <div className="space-y-4 lg:sticky lg:top-6 lg:self-start">
             {/* Main Image */}
             <div className="relative aspect-square overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-neutral-200">
               {gallery.length > 0 ? (
@@ -320,7 +318,13 @@ export default function SecretStashClient({
 
             {/* Tagline */}
             <div className="border-t border-neutral-200 pt-6">
-              <p className="text-sm text-neutral-700 leading-relaxed">{defaultTagline}</p>
+              {pageData?.tagline && pageData.tagline.length > 0 ? (
+                <div className="prose prose-sm prose-neutral max-w-none [&>p]:text-neutral-700 [&>p]:leading-relaxed">
+                  <PortableText value={pageData.tagline} />
+                </div>
+              ) : (
+                <p className="text-sm text-neutral-700 leading-relaxed">{defaultTaglineText}</p>
+              )}
             </div>
 
             {/* Benefits List */}
@@ -348,11 +352,11 @@ export default function SecretStashClient({
             )}
 
             {/* Shipping Note */}
-            {pageData?.shippingNote && (
+            {pageData?.shippingNote && pageData.shippingNote.length > 0 && (
               <div className="rounded-2xl bg-[#4eb8d5]/10 p-4">
-                <p className="text-sm text-neutral-700">
-                  <strong className="font-semibold">Shipping:</strong> {pageData.shippingNote}
-                </p>
+                <div className="text-sm text-neutral-700 [&>p]:mb-0 [&_strong]:font-semibold">
+                  <PortableText value={pageData.shippingNote} />
+                </div>
               </div>
             )}
           </div>
