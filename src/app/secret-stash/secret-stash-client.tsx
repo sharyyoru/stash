@@ -110,7 +110,11 @@ export default function SecretStashClient({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to create checkout session");
+        // Show detailed error for debugging
+        const errorMsg = data.details 
+          ? `${data.error}: ${data.details}` 
+          : data.error || "Failed to create checkout session";
+        throw new Error(errorMsg);
       }
 
       if (data.url) {

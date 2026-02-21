@@ -52,6 +52,15 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("Secret Stash checkout error:", error);
 
+    // Log full error for debugging
+    console.error("Full error details:", JSON.stringify({
+      message: error.message,
+      type: error.type,
+      code: error.code,
+      param: error.param,
+      raw: error.raw,
+    }, null, 2));
+
     if (error.message?.includes("STRIPE_SECRET_KEY")) {
       return NextResponse.json(
         {
@@ -62,10 +71,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Handle Stripe-specific errors
+    if (error.type === "StripeInvalidRequestError") {
+      return NextResponse.json(
+        {
+          error: `Stripe configuration error: ${error.message}`,
+          code: error.code,
+          param: error.param,
+        },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
       {
         error: "Failed to create checkout session",
-        details: error.message,
+        details: error.message || "Unknown error",
+        type: error.type || "unknown",
       },
       { status: 500 }
     );
