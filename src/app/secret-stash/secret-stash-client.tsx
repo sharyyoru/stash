@@ -323,7 +323,7 @@ export default function SecretStashClient({
             {/* Tagline */}
             <div className="border-t border-neutral-200 pt-6">
               {pageData?.tagline && pageData.tagline.length > 0 ? (
-                <div className="prose prose-sm prose-neutral max-w-none [&>p]:text-neutral-700 [&>p]:leading-relaxed">
+                <div className="prose prose-sm prose-neutral max-w-none [&>p]:text-neutral-700 [&>p]:leading-relaxed [&>p]:mb-4 [&>p:last-child]:mb-0 [&>h2]:mt-6 [&>h2]:mb-2 [&>h3]:mt-4 [&>h3]:mb-2 [&>h4]:mt-3 [&>h4]:mb-1 [&_strong]:font-semibold">
                   <PortableText value={pageData.tagline} />
                 </div>
               ) : (
@@ -350,7 +350,7 @@ export default function SecretStashClient({
 
             {/* Additional Content */}
             {pageData?.content && pageData.content.length > 0 && (
-              <div className="prose prose-sm prose-neutral max-w-none">
+              <div className="prose prose-sm prose-neutral max-w-none [&>p]:mb-4 [&>p:last-child]:mb-0 [&>h2]:mt-6 [&>h2]:mb-2 [&>h3]:mt-4 [&>h3]:mb-2 [&>h4]:mt-3 [&>h4]:mb-1 [&_strong]:font-semibold">
                 <PortableText value={pageData.content} />
               </div>
             )}
