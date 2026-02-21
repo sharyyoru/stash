@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { PortableText } from "@portabletext/react";
 
@@ -30,8 +31,21 @@ type SecretStashPageData = {
   cancellationPolicy?: string;
 };
 
+type RecapItem = {
+  _id: string;
+  title: string;
+  slug: string;
+  month: string;
+  shortDescription: string;
+  coverImageUrl: string;
+  price: number;
+  currency: string;
+  isAvailable: boolean;
+};
+
 type SecretStashClientProps = {
   pageData: SecretStashPageData | null;
+  recapItems?: RecapItem[];
   isSignedIn: boolean;
   userEmail?: string;
   userName?: string;
@@ -51,6 +65,7 @@ const billingPeriodDescriptions: Record<string, string> = {
 
 export default function SecretStashClient({
   pageData,
+  recapItems = [],
   isSignedIn,
   userEmail,
   userName,
@@ -342,6 +357,77 @@ export default function SecretStashClient({
             )}
           </div>
         </div>
+
+        {/* Recap Section */}
+        {recapItems.length > 0 && (
+          <div className="mt-16 border-t border-neutral-200 pt-12">
+            <div className="mb-8 text-center">
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#9d7cd8]">
+                Missed a month?
+              </p>
+              <h2 className="mt-2 text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">
+                Recap Collection
+              </h2>
+              <p className="mt-2 text-sm text-neutral-600 max-w-lg mx-auto">
+                Browse our previous mail club packages. If you see something you love, 
+                let us know and we'll check if it's still available!
+              </p>
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {recapItems.map((recap) => (
+                <Link
+                  key={recap._id}
+                  href={`/secret-stash/recap/${recap.slug}`}
+                  className="group relative overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-neutral-200 transition hover:shadow-md hover:ring-neutral-300"
+                >
+                  <div className="relative aspect-[4/3] overflow-hidden">
+                    {recap.coverImageUrl ? (
+                      <Image
+                        src={recap.coverImageUrl}
+                        alt={recap.title}
+                        fill
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center bg-gradient-to-br from-[#4eb8d5]/20 to-[#9d7cd8]/20">
+                        <span className="text-4xl">📦</span>
+                      </div>
+                    )}
+                    {recap.isAvailable && (
+                      <div className="absolute top-3 right-3 rounded-full bg-emerald-500 px-2 py-1 text-[10px] font-semibold text-white shadow-sm">
+                        Available
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-[#9d7cd8]">
+                      {recap.month}
+                    </p>
+                    <h3 className="mt-1 font-semibold text-neutral-900 group-hover:text-[#4eb8d5] transition-colors">
+                      {recap.title}
+                    </h3>
+                    {recap.shortDescription && (
+                      <p className="mt-1 text-xs text-neutral-500 line-clamp-2">
+                        {recap.shortDescription}
+                      </p>
+                    )}
+                    <div className="mt-3 flex items-center justify-between">
+                      {recap.price > 0 && (
+                        <span className="text-sm font-semibold text-neutral-900">
+                          {recap.currency} {recap.price.toFixed(2)}
+                        </span>
+                      )}
+                      <span className="text-xs font-medium text-[#4eb8d5] group-hover:underline">
+                        View Details →
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

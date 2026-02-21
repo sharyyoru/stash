@@ -7,6 +7,23 @@ import type { Order, OrderStatus } from "../../lib/orders-store";
 import type { Subscription, SubscriptionStatus } from "../../lib/subscriptions-store";
 
 const STORAGE_PREFIX = "stash_profile_address";
+const CANCELLATION_DAYS_BEFORE = 5;
+
+type SecretStashSubscription = {
+  id: string;
+  stripe_customer_id: string;
+  user_email: string;
+  user_name: string;
+  tier_id: string;
+  tier_name: string;
+  status: string;
+  current_period_start: string;
+  current_period_end: string;
+  cancel_at_period_end: boolean;
+  created_at: string;
+  updated_at?: string;
+  cancelled_at?: string;
+};
 
 type ProfileClientProps = {
   name?: string | null;
@@ -14,6 +31,7 @@ type ProfileClientProps = {
   image?: string | null;
   orders?: Order[];
   subscriptions?: Subscription[];
+  secretStashSubscriptions?: SecretStashSubscription[];
 };
 
 type Address = {
@@ -44,9 +62,12 @@ const emptyAddress: Address = {
   dateOfBirth: "",
 };
 
-export default function ProfileClient({ name, email, image, orders = [], subscriptions = [] }: ProfileClientProps) {
+export default function ProfileClient({ name, email, image, orders = [], subscriptions = [], secretStashSubscriptions = [] }: ProfileClientProps) {
   const [address, setAddress] = useState<Address>(emptyAddress);
   const [status, setStatus] = useState<string>("");
+  const [cancellingSubId, setCancellingSubId] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelledSubs, setCancelledSubs] = useState<Set<string>>(new Set());
 
   const firstName = typeof name === "string" && name.trim()
     ? name.trim().split(" ")[0]
@@ -194,6 +215,80 @@ export default function ProfileClient({ name, email, image, orders = [], subscri
     });
   };
 
+  const hasSecretStashSubscriptions = Array.isArray(secretStashSubscriptions) && secretStashSubscriptions.length > 0;
+
+  const canCancelSubscription = (sub: SecretStashSubscription): { canCancel: boolean; daysUntilRenewal: number; message?: string } => {
+    if (sub.status === "cancelled" || sub.cancel_at_period_end) {
+      return { canCancel: false, daysUntilRenewal: 0, message: "Already cancelled" };
+    }
+    
+    const currentPeriodEnd = new Date(sub.current_period_end);
+    const now = new Date();
+    const daysUntilRenewal = Math.ceil((currentPeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysUntilRenewal < CANCELLATION_DAYS_BEFORE) {
+      return {
+        canCancel: false,
+        daysUntilRenewal,
+        message: `Cancellations must be made at least ${CANCELLATION_DAYS_BEFORE} days before your next billing date. Your next billing is in ${daysUntilRenewal} day${daysUntilRenewal === 1 ? "" : "s"}.`,
+      };
+    }
+    
+    return { canCancel: true, daysUntilRenewal };
+  };
+
+  const handleCancelSubscription = async (subscriptionId: string) => {
+    setCancellingSubId(subscriptionId);
+    setCancelError(null);
+
+    try {
+      const response = await fetch("/api/secret-stash/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscriptionId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.error === "cancellation_too_late") {
+          setCancelError(data.message);
+        } else {
+          setCancelError(data.error || "Failed to cancel subscription");
+        }
+        return;
+      }
+
+      setCancelledSubs((prev) => new Set(prev).add(subscriptionId));
+    } catch (error: any) {
+      setCancelError("Something went wrong. Please try again.");
+    } finally {
+      setCancellingSubId(null);
+    }
+  };
+
+  const secretStashStatusLabel = (status: string, cancelAtPeriodEnd: boolean): string => {
+    if (cancelAtPeriodEnd) return "Cancelling";
+    switch (status) {
+      case "active": return "Active";
+      case "past_due": return "Past Due";
+      case "cancelled": return "Cancelled";
+      case "trialing": return "Trial";
+      default: return status;
+    }
+  };
+
+  const secretStashStatusColor = (status: string, cancelAtPeriodEnd: boolean): string => {
+    if (cancelAtPeriodEnd) return "bg-amber-500";
+    switch (status) {
+      case "active": return "bg-emerald-500";
+      case "past_due": return "bg-red-500";
+      case "cancelled": return "bg-neutral-400";
+      case "trialing": return "bg-blue-500";
+      default: return "bg-neutral-500";
+    }
+  };
+
   return (
     <div className="bg-neutral-50">
       <div className="mx-auto flex min-h-[calc(100vh-4rem-2.25rem)] max-w-6xl flex-col gap-8 px-4 py-10">
@@ -292,6 +387,138 @@ export default function ProfileClient({ name, email, image, orders = [], subscri
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Secret Stash Mail Club Subscriptions */}
+        {hasSecretStashSubscriptions && (
+          <div className="space-y-3 rounded-3xl bg-gradient-to-br from-purple-50 to-pink-50 p-5 text-sm shadow-sm ring-1 ring-purple-200">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-[0.2em] text-purple-700">
+                  Secret Stash Mail Club
+                </p>
+                <p className="text-xs text-purple-600">
+                  Your exclusive subscription membership
+                </p>
+              </div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-400">
+                <span className="text-lg">✨</span>
+              </div>
+            </div>
+
+            {cancelError && (
+              <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-xs text-red-700">
+                {cancelError}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {secretStashSubscriptions.map((sub) => {
+                const cancelStatus = canCancelSubscription(sub);
+                const isCancelled = sub.status === "cancelled" || sub.cancel_at_period_end || cancelledSubs.has(sub.id);
+                
+                return (
+                  <div
+                    key={sub.id}
+                    className="space-y-3 rounded-2xl border border-purple-200 bg-white p-4"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium text-neutral-900">{sub.tier_name || "Mail Club Membership"}</p>
+                        <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-400">
+                          {sub.id.slice(0, 20)}...
+                        </p>
+                      </div>
+                      <span className={`rounded-full ${secretStashStatusColor(sub.status, sub.cancel_at_period_end || cancelledSubs.has(sub.id))} px-2 py-0.5 text-[10px] font-semibold text-white`}>
+                        {secretStashStatusLabel(sub.status, sub.cancel_at_period_end || cancelledSubs.has(sub.id))}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-[11px]">
+                      <div>
+                        <p className="text-neutral-500">Current Period Start</p>
+                        <p className="font-medium text-neutral-900">
+                          {new Date(sub.current_period_start).toLocaleDateString("en-AE", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-neutral-500">Next Billing Date</p>
+                        <p className="font-medium text-neutral-900">
+                          {new Date(sub.current_period_end).toLocaleDateString("en-AE", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Cancellation Info */}
+                    {isCancelled ? (
+                      <div className="rounded-xl bg-amber-50 p-3 text-[11px]">
+                        <p className="text-amber-800 font-medium">Subscription ending</p>
+                        <p className="text-amber-700 mt-0.5">
+                          Your subscription will end on{" "}
+                          {new Date(sub.current_period_end).toLocaleDateString("en-AE", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}. You'll continue to receive benefits until then.
+                        </p>
+                      </div>
+                    ) : sub.status === "active" && (
+                      <div className="space-y-2">
+                        <div className="rounded-xl bg-purple-50 p-3 text-[11px]">
+                          <p className="text-purple-800 font-medium">Cancellation Policy</p>
+                          <p className="text-purple-700 mt-0.5">
+                            You can cancel your subscription up to {CANCELLATION_DAYS_BEFORE} days before your next billing date. 
+                            After cancellation, you'll continue to receive benefits until the end of your current period.
+                          </p>
+                        </div>
+
+                        {cancelStatus.canCancel ? (
+                          <button
+                            type="button"
+                            onClick={() => handleCancelSubscription(sub.id)}
+                            disabled={cancellingSubId === sub.id}
+                            className="w-full rounded-xl border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {cancellingSubId === sub.id ? (
+                              <span className="flex items-center justify-center gap-2">
+                                <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                                Cancelling...
+                              </span>
+                            ) : (
+                              "Cancel Subscription"
+                            )}
+                          </button>
+                        ) : (
+                          <div className="rounded-xl bg-neutral-100 p-3 text-[11px] text-neutral-600">
+                            <p className="font-medium">Cannot cancel at this time</p>
+                            <p className="mt-0.5">{cancelStatus.message}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <Link
+              href="/secret-stash"
+              className="inline-flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-800 transition-colors"
+            >
+              View Secret Stash →
+            </Link>
           </div>
         )}
 

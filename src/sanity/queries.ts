@@ -331,3 +331,37 @@ export const secretStashPageQuery = groq`*[_type == "secretStashPage"][0]{
   },
   cancellationPolicy
 }`;
+
+export const recapItemsQuery = groq`*[_type == "recapItem" && isAvailable == true] | order(publishedAt desc) {
+  _id,
+  title,
+  "slug": slug.current,
+  month,
+  shortDescription,
+  "coverImageUrl": coverImage.asset->url,
+  price,
+  currency,
+  isAvailable
+}`;
+
+export const recapItemBySlugQuery = groq`*[_type == "recapItem" && slug.current == $slug][0]{
+  _id,
+  title,
+  "slug": slug.current,
+  month,
+  shortDescription,
+  "coverImageUrl": coverImage.asset->url,
+  gallery[]{
+    "url": asset->url
+  },
+  contents[]{
+    _key,
+    name,
+    description
+  },
+  longDescription,
+  price,
+  currency,
+  isAvailable,
+  publishedAt
+}`;

@@ -552,6 +552,14 @@ export const secretStashPageType = defineType({
       description: "Short intro text about what subscribers receive",
     }),
     defineField({
+      name: "cancellationPolicyText",
+      title: "Cancellation Policy Text",
+      type: "text",
+      rows: 3,
+      description: "Displayed cancellation policy (e.g., 'Cancel at least 5 days before your next billing date')",
+      initialValue: "You may cancel your subscription at any time, but cancellations must be made at least 5 days before your next billing date. After cancellation, you will continue to receive benefits until the end of your current billing period.",
+    }),
+    defineField({
       name: "gallery",
       title: "Gallery Images",
       type: "array",
@@ -680,6 +688,115 @@ export const secretStashPageType = defineType({
   },
 });
 
+export const recapItemType = defineType({
+  name: "recapItem",
+  title: "Secret Stash Recap",
+  type: "document",
+  fields: [
+    defineField({
+      name: "title",
+      title: "Title",
+      type: "string",
+      description: "Name of this recap item (e.g., 'January 2025 Recap')",
+    }),
+    defineField({
+      name: "slug",
+      title: "Slug",
+      type: "slug",
+      options: { source: "title", maxLength: 96 },
+    }),
+    defineField({
+      name: "month",
+      title: "Month",
+      type: "string",
+      description: "Month this recap represents (e.g., 'January 2025')",
+    }),
+    defineField({
+      name: "shortDescription",
+      title: "Short Description",
+      type: "text",
+      rows: 2,
+      description: "Brief description shown in the recap grid",
+    }),
+    defineField({
+      name: "coverImage",
+      title: "Cover Image",
+      type: "image",
+      options: { hotspot: true },
+      description: "Main image shown in the recap grid",
+    }),
+    defineField({
+      name: "gallery",
+      title: "Gallery Images",
+      type: "array",
+      of: [{ type: "image", options: { hotspot: true } }],
+      description: "Additional images showcasing what was in this recap",
+    }),
+    defineField({
+      name: "contents",
+      title: "What's Included",
+      type: "array",
+      of: [
+        {
+          type: "object",
+          name: "contentItem",
+          title: "Item",
+          fields: [
+            { name: "name", title: "Item Name", type: "string" },
+            { name: "description", title: "Description", type: "text", rows: 2 },
+          ],
+        },
+      ],
+      description: "List of items that were included in this recap",
+    }),
+    defineField({
+      name: "longDescription",
+      title: "Full Description",
+      type: "array",
+      of: [{ type: "block" }],
+      description: "Detailed description for the recap page",
+    }),
+    defineField({
+      name: "price",
+      title: "Price",
+      type: "number",
+      description: "Price to purchase this recap (if available)",
+    }),
+    defineField({
+      name: "currency",
+      title: "Currency",
+      type: "string",
+      initialValue: "AED",
+    }),
+    defineField({
+      name: "isAvailable",
+      title: "Available for Purchase",
+      type: "boolean",
+      initialValue: true,
+      description: "Toggle off if this recap is no longer available",
+    }),
+    defineField({
+      name: "publishedAt",
+      title: "Published Date",
+      type: "datetime",
+    }),
+  ],
+  preview: {
+    select: {
+      title: "title",
+      month: "month",
+      media: "coverImage",
+    },
+    prepare({ title, month, media }) {
+      return {
+        title: title || "Untitled Recap",
+        subtitle: month,
+        media,
+      };
+    },
+  },
+});
+
 export const schemaTypes = [
   productType,
   categoryType,
@@ -692,4 +809,5 @@ export const schemaTypes = [
   siteSettingsType,
   homepageType,
   secretStashPageType,
+  recapItemType,
 ];
