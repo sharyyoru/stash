@@ -521,6 +521,165 @@ export const homepageType = defineType({
   ],
 });
 
+export const secretStashPageType = defineType({
+  name: "secretStashPage",
+  title: "Secret Stash Mail Club",
+  type: "document",
+  fields: [
+    defineField({
+      name: "title",
+      title: "Page Title",
+      type: "string",
+      initialValue: "Secret Stash Mail Club",
+    }),
+    defineField({
+      name: "subtitle",
+      title: "Subtitle",
+      type: "string",
+      description: "Small label above the main heading (e.g., 'SUBSCRIPTION')",
+    }),
+    defineField({
+      name: "heading",
+      title: "Main Heading",
+      type: "string",
+      description: "The big title (e.g., 'Mail Club')",
+    }),
+    defineField({
+      name: "tagline",
+      title: "Tagline",
+      type: "text",
+      rows: 2,
+      description: "Short intro text about what subscribers receive",
+    }),
+    defineField({
+      name: "gallery",
+      title: "Gallery Images",
+      type: "array",
+      of: [{ type: "image", options: { hotspot: true } }],
+      description: "Images showcasing previous mail packages",
+    }),
+    defineField({
+      name: "benefits",
+      title: "Benefits List",
+      type: "array",
+      of: [
+        {
+          type: "object",
+          name: "benefit",
+          title: "Benefit",
+          fields: [
+            {
+              name: "title",
+              title: "Title",
+              type: "string",
+              description: "The highlighted word (e.g., 'fine art print')",
+            },
+            {
+              name: "description",
+              title: "Description",
+              type: "string",
+              description: "Full benefit description",
+            },
+          ],
+        },
+      ],
+    }),
+    defineField({
+      name: "content",
+      title: "Additional Content",
+      type: "array",
+      of: [{ type: "block" }],
+      description: "Rich text content below the benefits",
+    }),
+    defineField({
+      name: "shippingNote",
+      title: "Shipping Note",
+      type: "text",
+      rows: 2,
+      description: "Note about when items are shipped",
+    }),
+    defineField({
+      name: "currency",
+      title: "Currency",
+      type: "string",
+      initialValue: "AED",
+    }),
+    defineField({
+      name: "pricingTiers",
+      title: "Pricing Tiers",
+      type: "array",
+      of: [
+        {
+          type: "object",
+          name: "pricingTier",
+          title: "Pricing Tier",
+          fields: [
+            {
+              name: "id",
+              title: "ID",
+              type: "string",
+              description: "Unique identifier (e.g., 'monthly', 'quarterly', 'annual')",
+            },
+            {
+              name: "name",
+              title: "Name",
+              type: "string",
+              description: "Display name (e.g., 'Monthly Membership')",
+            },
+            {
+              name: "price",
+              title: "Price",
+              type: "number",
+              description: "Price per billing period",
+            },
+            {
+              name: "billingPeriod",
+              title: "Billing Period",
+              type: "string",
+              options: {
+                list: [
+                  { title: "Monthly", value: "month" },
+                  { title: "Quarterly (3 months)", value: "quarter" },
+                  { title: "Annual (12 months)", value: "year" },
+                ],
+              },
+            },
+            {
+              name: "stripePriceId",
+              title: "Stripe Price ID",
+              type: "string",
+              description: "The Stripe Price ID for this tier (e.g., price_xxx)",
+            },
+            {
+              name: "savings",
+              title: "Savings Text",
+              type: "string",
+              description: "Optional savings badge (e.g., 'Save 15%')",
+            },
+            {
+              name: "isPopular",
+              title: "Mark as Popular",
+              type: "boolean",
+              initialValue: false,
+            },
+          ],
+        },
+      ],
+    }),
+    defineField({
+      name: "cancellationPolicy",
+      title: "Cancellation Policy",
+      type: "text",
+      rows: 3,
+    }),
+  ],
+  preview: {
+    prepare() {
+      return { title: "Secret Stash Mail Club" };
+    },
+  },
+});
+
 export const schemaTypes = [
   productType,
   categoryType,
@@ -532,4 +691,5 @@ export const schemaTypes = [
   termsPageType,
   siteSettingsType,
   homepageType,
+  secretStashPageType,
 ];

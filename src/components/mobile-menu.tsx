@@ -116,6 +116,18 @@ export default function MobileMenu() {
                   </Link>
                 );
               })}
+              {/* Secret Stash - Special rainbow link */}
+              <Link
+                href="/secret-stash"
+                onClick={() => setIsOpen(false)}
+                className={`block px-4 py-3 rounded-2xl text-sm font-bold transition-opacity ${
+                  pathname === "/secret-stash"
+                    ? "bg-gradient-to-r from-pink-100 via-purple-100 to-blue-100"
+                    : "hover:bg-neutral-50 active:bg-neutral-100"
+                } stash-rainbow-text`}
+              >
+                ✨ Secret Stash
+              </Link>
             </nav>
             
             {/* Safe area padding for devices with notch */}

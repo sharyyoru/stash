@@ -147,6 +147,9 @@ function SiteHeader({ searchSuggestions, session, siteSettings }: SiteHeaderProp
             <NavLink href="/category/stationery">Stationery</NavLink>
             <NavLink href="/category/bundles">Bundles</NavLink>
             <NavLink href="/blog">Blog</NavLink>
+            <Link href="/secret-stash" className="stash-rainbow-text font-bold transition-opacity hover:opacity-80">
+              Secret Stash
+            </Link>
           </nav>
         </div>
         <div className="flex items-center gap-2">
@@ -222,6 +225,11 @@ function SiteFooter({ siteSettings }: SiteFooterProps) {
               </li>
               <li>
                 <NavLink href="/category/bundles">Bundles</NavLink>
+              </li>
+              <li>
+                <Link href="/secret-stash" className="stash-rainbow-text font-bold">
+                  Secret Stash ✨
+                </Link>
               </li>
             </ul>
           </div>

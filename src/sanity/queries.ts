@@ -302,3 +302,32 @@ export const blogPostBySlugQuery = groq`*[_type == "blogPost" && slug.current ==
   content,
   "coverImageUrl": coverImage.asset->url
 }`;
+
+export const secretStashPageQuery = groq`*[_type == "secretStashPage"][0]{
+  title,
+  subtitle,
+  heading,
+  tagline,
+  gallery[]{
+    "url": asset->url
+  },
+  benefits[]{
+    _key,
+    title,
+    description
+  },
+  content,
+  shippingNote,
+  currency,
+  pricingTiers[]{
+    _key,
+    id,
+    name,
+    price,
+    billingPeriod,
+    stripePriceId,
+    savings,
+    isPopular
+  },
+  cancellationPolicy
+}`;
