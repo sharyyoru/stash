@@ -1,0 +1,733 @@
+"use client";
+
+import { useState, useEffect, useMemo } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+type SubscriptionStatus = "active" | "cancelled" | "past_due" | "trialing" | "incomplete";
+
+type DeliveryStatus = "pending" | "sent" | "delivered";
+
+type Profile = {
+  email: string;
+  name?: string;
+  mobile?: string;
+  address_line1?: string;
+  address_line2?: string;
+  building?: string;
+  area?: string;
+  city?: string;
+  emirate?: string;
+  landmark?: string;
+};
+
+type CurrentMonthDelivery = {
+  id: string;
+  subscription_id: string;
+  month: string;
+  status: DeliveryStatus;
+  sent_at?: string;
+  tracking_number?: string;
+  notes?: string;
+};
+
+type SecretStashSubscription = {
+  id: string;
+  stripe_customer_id: string;
+  user_email: string;
+  user_name?: string;
+  tier_id?: string;
+  tier_name?: string;
+  status: SubscriptionStatus;
+  current_period_start: string;
+  current_period_end: string;
+  cancel_at_period_end?: boolean;
+  created_at: string;
+  updated_at?: string;
+  cancelled_at?: string;
+  profile?: Profile | null;
+  currentMonthDelivery?: CurrentMonthDelivery | null;
+};
+
+type Stats = {
+  total: number;
+  active: number;
+  cancelled: number;
+  pastDue: number;
+  pendingLetters: number;
+  sentLetters: number;
+};
+
+const statusColors: Record<string, string> = {
+  active: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  cancelled: "bg-red-100 text-red-800 border-red-200",
+  past_due: "bg-orange-100 text-orange-800 border-orange-200",
+  trialing: "bg-blue-100 text-blue-800 border-blue-200",
+  incomplete: "bg-yellow-100 text-yellow-800 border-yellow-200",
+};
+
+const deliveryStatusColors: Record<string, string> = {
+  pending: "bg-yellow-100 text-yellow-800",
+  sent: "bg-blue-100 text-blue-800",
+  delivered: "bg-green-100 text-green-800",
+};
+
+function formatDate(iso: string): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-AE", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatMonth(monthStr: string): string {
+  if (!monthStr) return "—";
+  const [year, month] = monthStr.split("-");
+  const date = new Date(parseInt(year), parseInt(month) - 1);
+  return date.toLocaleDateString("en-AE", { year: "numeric", month: "long" });
+}
+
+function getCurrentMonth(): string {
+  return new Date().toISOString().slice(0, 7);
+}
+
+function getMonthOptions(): string[] {
+  const months: string[] = [];
+  const now = new Date();
+  for (let i = -3; i <= 1; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    months.push(d.toISOString().slice(0, 7));
+  }
+  return months;
+}
+
+export default function AdminSecretStashPage() {
+  const { data: session, status: sessionStatus } = useSession();
+  const router = useRouter();
+
+  const [subscriptions, setSubscriptions] = useState<SecretStashSubscription[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Filters
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | SubscriptionStatus>("all");
+  const [letterFilter, setLetterFilter] = useState<"all" | "pending" | "sent">("all");
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
+
+  // Selection for bulk actions
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Action states
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Monthly report view
+  const [showReport, setShowReport] = useState(false);
+  const [monthlyStats, setMonthlyStats] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    if (sessionStatus === "loading") return;
+    if (!session?.user?.email) {
+      router.push("/sign-in");
+      return;
+    }
+    fetchSubscriptions();
+  }, [session, sessionStatus, router]);
+
+  const fetchSubscriptions = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/admin/secret-stash");
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to fetch subscriptions");
+      }
+      const data = await res.json();
+      setSubscriptions(data.subscriptions || []);
+      setStats(data.stats || null);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchMonthlyReport = async () => {
+    try {
+      const res = await fetch("/api/admin/secret-stash?action=stats");
+      if (!res.ok) throw new Error("Failed to fetch stats");
+      const data = await res.json();
+      setMonthlyStats(data.stats || {});
+      setShowReport(true);
+    } catch (err: any) {
+      setActionMessage({ type: "error", text: err.message });
+    }
+  };
+
+  const markLetterSent = async (subscriptionId: string, status: DeliveryStatus = "sent") => {
+    setActionLoading(subscriptionId);
+    setActionMessage(null);
+
+    try {
+      const res = await fetch("/api/admin/secret-stash", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "mark_letter",
+          subscriptionId,
+          month: selectedMonth,
+          status,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to update");
+      }
+
+      setActionMessage({ type: "success", text: `Letter marked as ${status}!` });
+      fetchSubscriptions();
+    } catch (err: any) {
+      setActionMessage({ type: "error", text: err.message });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const bulkMarkSent = async () => {
+    if (selectedIds.size === 0) return;
+
+    setActionLoading("bulk");
+    setActionMessage(null);
+
+    try {
+      const res = await fetch("/api/admin/secret-stash", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "bulk_mark",
+          subscriptionIds: Array.from(selectedIds),
+          month: selectedMonth,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to update");
+      }
+
+      const data = await res.json();
+      setActionMessage({ type: "success", text: `${data.count} letters marked as sent!` });
+      setSelectedIds(new Set());
+      fetchSubscriptions();
+    } catch (err: any) {
+      setActionMessage({ type: "error", text: err.message });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const toggleSelection = (id: string) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedIds(newSet);
+  };
+
+  const selectAllPending = () => {
+    const pendingIds = filteredSubscriptions
+      .filter((s) => s.status === "active" && !s.currentMonthDelivery?.status)
+      .map((s) => s.id);
+    setSelectedIds(new Set(pendingIds));
+  };
+
+  // Filtered subscriptions
+  const filteredSubscriptions = useMemo(() => {
+    let result = [...subscriptions];
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (s) =>
+          s.id.toLowerCase().includes(q) ||
+          s.user_email.toLowerCase().includes(q) ||
+          (s.user_name?.toLowerCase().includes(q) ?? false) ||
+          (s.tier_name?.toLowerCase().includes(q) ?? false)
+      );
+    }
+
+    // Status filter
+    if (statusFilter !== "all") {
+      result = result.filter((s) => s.status === statusFilter);
+    }
+
+    // Letter status filter
+    if (letterFilter !== "all") {
+      result = result.filter((s) => {
+        const deliveryStatus = s.currentMonthDelivery?.status;
+        if (letterFilter === "pending") {
+          return s.status === "active" && (!deliveryStatus || deliveryStatus === "pending");
+        }
+        if (letterFilter === "sent") {
+          return deliveryStatus === "sent" || deliveryStatus === "delivered";
+        }
+        return true;
+      });
+    }
+
+    return result;
+  }, [subscriptions, searchQuery, statusFilter, letterFilter]);
+
+  if (sessionStatus === "loading" || loading) {
+    return (
+      <div className="bg-neutral-50 min-h-screen">
+        <div className="mx-auto max-w-7xl px-4 py-10">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-neutral-200 rounded w-64"></div>
+            <div className="h-32 bg-neutral-200 rounded"></div>
+            <div className="h-96 bg-neutral-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-neutral-50 min-h-screen">
+        <div className="mx-auto max-w-7xl px-4 py-10">
+          <div className="rounded-2xl bg-red-50 border border-red-200 p-6 text-center">
+            <p className="text-red-800">Error: {error}</p>
+            <button
+              onClick={fetchSubscriptions}
+              className="mt-4 rounded-full bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-neutral-50 min-h-screen">
+      <div className="mx-auto max-w-7xl px-4 py-10 space-y-6">
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-purple-600">
+              Admin
+            </p>
+            <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
+              Secret Stash Mail Club
+            </h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/admin/orders"
+              className="inline-flex items-center rounded-full border border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-700 shadow-sm hover:bg-neutral-50"
+            >
+              Orders
+            </Link>
+            <Link
+              href="/admin/subscriptions"
+              className="inline-flex items-center rounded-full border border-neutral-200 bg-white px-3 py-2 text-xs font-medium text-neutral-700 shadow-sm hover:bg-neutral-50"
+            >
+              Subscriptions
+            </Link>
+            <button
+              onClick={fetchMonthlyReport}
+              className="inline-flex items-center rounded-full bg-purple-100 px-3 py-2 text-xs font-medium text-purple-700 shadow-sm hover:bg-purple-200"
+            >
+              <svg className="mr-1.5 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Monthly Report
+            </button>
+          </div>
+        </div>
+
+        {/* Action Message */}
+        {actionMessage && (
+          <div
+            className={`rounded-xl p-3 text-sm ${
+              actionMessage.type === "success"
+                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                : "bg-red-50 text-red-800 border border-red-200"
+            }`}
+          >
+            {actionMessage.text}
+            <button
+              onClick={() => setActionMessage(null)}
+              className="ml-2 font-medium underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Stats Cards */}
+        {stats && (
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+            <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-neutral-100">
+              <p className="text-xs text-neutral-500 uppercase tracking-wide">Total</p>
+              <p className="text-2xl font-bold text-neutral-900">{stats.total}</p>
+            </div>
+            <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-neutral-100">
+              <p className="text-xs text-neutral-500 uppercase tracking-wide">Active</p>
+              <p className="text-2xl font-bold text-emerald-600">{stats.active}</p>
+            </div>
+            <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-neutral-100">
+              <p className="text-xs text-neutral-500 uppercase tracking-wide">Cancelled</p>
+              <p className="text-2xl font-bold text-red-600">{stats.cancelled}</p>
+            </div>
+            <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-neutral-100">
+              <p className="text-xs text-neutral-500 uppercase tracking-wide">Past Due</p>
+              <p className="text-2xl font-bold text-orange-600">{stats.pastDue}</p>
+            </div>
+            <div className="rounded-2xl bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 shadow-sm ring-1 ring-yellow-200">
+              <p className="text-xs text-yellow-700 uppercase tracking-wide">Pending Letters</p>
+              <p className="text-2xl font-bold text-yellow-800">{stats.pendingLetters}</p>
+            </div>
+            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 p-4 shadow-sm ring-1 ring-blue-200">
+              <p className="text-xs text-blue-700 uppercase tracking-wide">Sent This Month</p>
+              <p className="text-2xl font-bold text-blue-800">{stats.sentLetters}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Month Selector & Filters */}
+        <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-neutral-100 space-y-4">
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Month Selector */}
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-neutral-600">Month:</label>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-2.5 text-sm font-medium text-purple-800 focus:border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-100"
+              >
+                {getMonthOptions().map((m) => (
+                  <option key={m} value={m}>
+                    {formatMonth(m)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Search */}
+            <div className="flex-1 min-w-[200px]">
+              <div className="relative">
+                <svg
+                  className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search by email, name, or tier..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-xl border border-neutral-200 bg-neutral-50 pl-10 pr-4 py-2.5 text-sm text-neutral-900 placeholder-neutral-400 focus:border-purple-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-100"
+                />
+              </div>
+            </div>
+
+            {/* Status Filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm text-neutral-700 focus:border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-100"
+            >
+              <option value="all">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="past_due">Past Due</option>
+            </select>
+
+            {/* Letter Status Filter */}
+            <select
+              value={letterFilter}
+              onChange={(e) => setLetterFilter(e.target.value as any)}
+              className="rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm text-neutral-700 focus:border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-100"
+            >
+              <option value="all">All Letters</option>
+              <option value="pending">Pending</option>
+              <option value="sent">Sent</option>
+            </select>
+          </div>
+
+          {/* Bulk Actions */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-neutral-100">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-neutral-500">
+                {selectedIds.size} selected
+              </span>
+              <button
+                onClick={selectAllPending}
+                className="text-xs text-purple-600 hover:text-purple-800 font-medium"
+              >
+                Select All Pending
+              </button>
+              {selectedIds.size > 0 && (
+                <button
+                  onClick={() => setSelectedIds(new Set())}
+                  className="text-xs text-neutral-500 hover:text-neutral-700"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={bulkMarkSent}
+                disabled={selectedIds.size === 0 || actionLoading === "bulk"}
+                className="inline-flex items-center rounded-full bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {actionLoading === "bulk" ? (
+                  "Processing..."
+                ) : (
+                  <>
+                    <svg className="mr-1.5 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Mark Selected as Sent
+                  </>
+                )}
+              </button>
+              <button
+                onClick={fetchSubscriptions}
+                className="inline-flex items-center text-xs text-purple-600 hover:text-purple-700"
+              >
+                <svg className="mr-1 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Subscriptions Table */}
+        {filteredSubscriptions.length === 0 ? (
+          <div className="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-neutral-100 text-center">
+            <p className="text-neutral-500">No subscriptions found matching your filters.</p>
+          </div>
+        ) : (
+          <div className="rounded-2xl bg-white shadow-sm ring-1 ring-neutral-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-neutral-50 border-b border-neutral-100">
+                  <tr>
+                    <th className="px-4 py-3 text-left">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.size > 0 && selectedIds.size === filteredSubscriptions.filter(s => s.status === "active").length}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            selectAllPending();
+                          } else {
+                            setSelectedIds(new Set());
+                          }
+                        }}
+                        className="rounded border-neutral-300"
+                      />
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wide">
+                      Subscriber
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wide">
+                      Tier
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wide">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wide">
+                      Delivery Address
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wide">
+                      {formatMonth(selectedMonth)} Letter
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wide">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {filteredSubscriptions.map((sub) => {
+                    const deliveryStatus = sub.currentMonthDelivery?.status;
+                    const isPending = sub.status === "active" && (!deliveryStatus || deliveryStatus === "pending");
+                    const profile = sub.profile;
+
+                    return (
+                      <tr key={sub.id} className={selectedIds.has(sub.id) ? "bg-purple-50" : "hover:bg-neutral-50"}>
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(sub.id)}
+                            onChange={() => toggleSelection(sub.id)}
+                            disabled={sub.status !== "active"}
+                            className="rounded border-neutral-300 disabled:opacity-50"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div>
+                            <p className="font-medium text-neutral-900">{sub.user_name || "—"}</p>
+                            <p className="text-xs text-neutral-500">{sub.user_email}</p>
+                            {profile?.mobile && (
+                              <p className="text-xs text-neutral-400">{profile.mobile}</p>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-neutral-700">{sub.tier_name || "Standard"}</span>
+                          <p className="text-[10px] text-neutral-400">
+                            Since {formatDate(sub.created_at)}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusColors[sub.status] || "bg-neutral-100 text-neutral-800"}`}>
+                            {sub.status.toUpperCase()}
+                          </span>
+                          {sub.cancel_at_period_end && (
+                            <p className="text-[10px] text-orange-600 mt-0.5">Cancelling at period end</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 max-w-[200px]">
+                          {profile ? (
+                            <div className="text-xs text-neutral-600">
+                              {profile.address_line1 && <p>{profile.address_line1}</p>}
+                              {profile.building && <p>{profile.building}</p>}
+                              {profile.area && <p>{profile.area}</p>}
+                              {(profile.city || profile.emirate) && (
+                                <p>{[profile.city, profile.emirate].filter(Boolean).join(", ")}</p>
+                              )}
+                              {profile.landmark && <p className="text-neutral-400">{profile.landmark}</p>}
+                            </div>
+                          ) : (
+                            <span className="text-neutral-400 text-xs">No address</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {deliveryStatus ? (
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${deliveryStatusColors[deliveryStatus]}`}>
+                              {deliveryStatus.toUpperCase()}
+                            </span>
+                          ) : sub.status === "active" ? (
+                            <span className="text-yellow-600 text-xs font-medium">⏳ Pending</span>
+                          ) : (
+                            <span className="text-neutral-400 text-xs">—</span>
+                          )}
+                          {sub.currentMonthDelivery?.sent_at && (
+                            <p className="text-[10px] text-neutral-400 mt-0.5">
+                              {formatDate(sub.currentMonthDelivery.sent_at)}
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {sub.status === "active" && (
+                            <div className="flex flex-wrap gap-1">
+                              {isPending ? (
+                                <button
+                                  onClick={() => markLetterSent(sub.id, "sent")}
+                                  disabled={actionLoading === sub.id}
+                                  className="inline-flex items-center rounded-full bg-blue-100 px-2 py-1 text-[10px] font-medium text-blue-800 hover:bg-blue-200 disabled:opacity-50"
+                                >
+                                  {actionLoading === sub.id ? "..." : "Mark Sent"}
+                                </button>
+                              ) : deliveryStatus === "sent" ? (
+                                <button
+                                  onClick={() => markLetterSent(sub.id, "delivered")}
+                                  disabled={actionLoading === sub.id}
+                                  className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-[10px] font-medium text-green-800 hover:bg-green-200 disabled:opacity-50"
+                                >
+                                  {actionLoading === sub.id ? "..." : "Mark Delivered"}
+                                </button>
+                              ) : null}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Monthly Report Modal */}
+        {showReport && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-3xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+              <div className="p-6 border-b border-neutral-100 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-neutral-900">Month-on-Month Report</h2>
+                <button
+                  onClick={() => setShowReport(false)}
+                  className="p-2 hover:bg-neutral-100 rounded-full"
+                >
+                  <svg className="h-5 w-5 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto max-h-[60vh]">
+                {Object.keys(monthlyStats).length === 0 ? (
+                  <p className="text-neutral-500 text-center py-8">No data available yet.</p>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead className="bg-neutral-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase">Month</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-neutral-600 uppercase">New Subs</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-neutral-600 uppercase">Revenue</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-neutral-600 uppercase">Letters Sent</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-neutral-100">
+                      {Object.entries(monthlyStats)
+                        .sort(([a], [b]) => b.localeCompare(a))
+                        .map(([month, data]: [string, any]) => (
+                          <tr key={month}>
+                            <td className="px-4 py-3 font-medium">{formatMonth(month)}</td>
+                            <td className="px-4 py-3 text-right text-emerald-600 font-semibold">
+                              +{data.newSubscriptions || 0}
+                            </td>
+                            <td className="px-4 py-3 text-right text-amber-600 font-semibold">
+                              AED {(data.revenue || 0).toFixed(0)}
+                            </td>
+                            <td className="px-4 py-3 text-right text-blue-600 font-semibold">
+                              {data.lettersSent || 0}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

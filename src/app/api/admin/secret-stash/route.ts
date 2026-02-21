@@ -1,0 +1,228 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../auth/[...nextauth]/route";
+import { supabaseAdmin } from "../../../../lib/supabase-admin";
+
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase());
+
+function isAdmin(email?: string | null): boolean {
+  if (!email) return false;
+  return ADMIN_EMAILS.includes(email.toLowerCase());
+}
+
+export async function GET(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.email || !isAdmin(session.user.email)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const action = searchParams.get("action");
+
+  try {
+    if (action === "stats") {
+      // Get month-on-month stats
+      const { data: subscriptions } = await supabaseAdmin
+        .from("secret_stash_subscriptions")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      const { data: deliveries } = await supabaseAdmin
+        .from("secret_stash_deliveries")
+        .select("*")
+        .order("month", { ascending: false });
+
+      const { data: payments } = await supabaseAdmin
+        .from("secret_stash_payments")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      // Calculate monthly stats
+      const monthlyStats: Record<string, any> = {};
+      
+      (subscriptions || []).forEach((sub) => {
+        const month = sub.created_at?.slice(0, 7) || "unknown";
+        if (!monthlyStats[month]) {
+          monthlyStats[month] = { newSubscriptions: 0, revenue: 0, lettersSent: 0, totalActive: 0 };
+        }
+        monthlyStats[month].newSubscriptions++;
+      });
+
+      (payments || []).forEach((payment) => {
+        if (payment.status === "paid") {
+          const month = payment.created_at?.slice(0, 7) || "unknown";
+          if (!monthlyStats[month]) {
+            monthlyStats[month] = { newSubscriptions: 0, revenue: 0, lettersSent: 0, totalActive: 0 };
+          }
+          monthlyStats[month].revenue += payment.amount || 0;
+        }
+      });
+
+      (deliveries || []).forEach((del) => {
+        const month = del.month || "unknown";
+        if (!monthlyStats[month]) {
+          monthlyStats[month] = { newSubscriptions: 0, revenue: 0, lettersSent: 0, totalActive: 0 };
+        }
+        if (del.status === "sent" || del.status === "delivered") {
+          monthlyStats[month].lettersSent++;
+        }
+      });
+
+      return NextResponse.json({ stats: monthlyStats });
+    }
+
+    // Default: Get all subscriptions with user profiles and delivery status
+    const { data: subscriptions, error } = await supabaseAdmin
+      .from("secret_stash_subscriptions")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    // Get user profiles for delivery addresses
+    const userEmails = [...new Set((subscriptions || []).map((s) => s.user_email).filter(Boolean))];
+    
+    const { data: profiles } = await supabaseAdmin
+      .from("profiles")
+      .select("*")
+      .in("email", userEmails);
+
+    const profileMap = new Map((profiles || []).map((p) => [p.email, p]));
+
+    // Get current month's delivery status for each subscription
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const { data: deliveries } = await supabaseAdmin
+      .from("secret_stash_deliveries")
+      .select("*")
+      .eq("month", currentMonth);
+
+    const deliveryMap = new Map((deliveries || []).map((d) => [d.subscription_id, d]));
+
+    // Combine data
+    const enrichedSubscriptions = (subscriptions || []).map((sub) => ({
+      ...sub,
+      profile: profileMap.get(sub.user_email) || null,
+      currentMonthDelivery: deliveryMap.get(sub.id) || null,
+    }));
+
+    // Calculate summary stats
+    const stats = {
+      total: subscriptions?.length || 0,
+      active: subscriptions?.filter((s) => s.status === "active").length || 0,
+      cancelled: subscriptions?.filter((s) => s.status === "cancelled").length || 0,
+      pastDue: subscriptions?.filter((s) => s.status === "past_due").length || 0,
+      pendingLetters: enrichedSubscriptions.filter(
+        (s) => s.status === "active" && !s.currentMonthDelivery?.status
+      ).length,
+      sentLetters: deliveries?.filter((d) => d.status === "sent" || d.status === "delivered").length || 0,
+    };
+
+    return NextResponse.json({ subscriptions: enrichedSubscriptions, stats });
+  } catch (error: any) {
+    console.error("Admin Secret Stash API error:", error);
+    return NextResponse.json({ error: error.message || "Internal error" }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.email || !isAdmin(session.user.email)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = await req.json().catch(() => null);
+  if (!body) {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+
+  const { action, subscriptionId, month, status, notes, trackingNumber } = body;
+
+  try {
+    if (action === "mark_letter") {
+      // Mark letter as sent/pending for a subscription
+      const targetMonth = month || new Date().toISOString().slice(0, 7);
+      
+      // Check if delivery record exists
+      const { data: existing } = await supabaseAdmin
+        .from("secret_stash_deliveries")
+        .select("*")
+        .eq("subscription_id", subscriptionId)
+        .eq("month", targetMonth)
+        .single();
+
+      if (existing) {
+        // Update existing
+        const { error } = await supabaseAdmin
+          .from("secret_stash_deliveries")
+          .update({
+            status: status || "sent",
+            sent_at: status === "sent" ? new Date().toISOString() : existing.sent_at,
+            notes: notes || existing.notes,
+            tracking_number: trackingNumber || existing.tracking_number,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existing.id);
+
+        if (error) throw error;
+      } else {
+        // Create new
+        const { error } = await supabaseAdmin.from("secret_stash_deliveries").insert({
+          subscription_id: subscriptionId,
+          month: targetMonth,
+          status: status || "sent",
+          sent_at: status === "sent" ? new Date().toISOString() : null,
+          notes: notes || null,
+          tracking_number: trackingNumber || null,
+          created_at: new Date().toISOString(),
+        });
+
+        if (error) throw error;
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === "bulk_mark") {
+      // Bulk mark letters as sent
+      const { subscriptionIds } = body;
+      const targetMonth = month || new Date().toISOString().slice(0, 7);
+
+      for (const subId of subscriptionIds || []) {
+        const { data: existing } = await supabaseAdmin
+          .from("secret_stash_deliveries")
+          .select("id")
+          .eq("subscription_id", subId)
+          .eq("month", targetMonth)
+          .single();
+
+        if (existing) {
+          await supabaseAdmin
+            .from("secret_stash_deliveries")
+            .update({
+              status: "sent",
+              sent_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existing.id);
+        } else {
+          await supabaseAdmin.from("secret_stash_deliveries").insert({
+            subscription_id: subId,
+            month: targetMonth,
+            status: "sent",
+            sent_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+          });
+        }
+      }
+
+      return NextResponse.json({ success: true, count: subscriptionIds?.length || 0 });
+    }
+
+    return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+  } catch (error: any) {
+    console.error("Admin Secret Stash API error:", error);
+    return NextResponse.json({ error: error.message || "Internal error" }, { status: 500 });
+  }
+}
