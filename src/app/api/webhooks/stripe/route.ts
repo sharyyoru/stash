@@ -120,46 +120,137 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const metadata = session.metadata || {};
   
   if (metadata.productType !== "secret-stash-mail-club") {
+    console.log("[Stripe Webhook] Skipping non-secret-stash checkout:", session.id);
     return;
   }
 
+  console.log("[Stripe Webhook] Processing Secret Stash checkout:", session.id);
+
   const stripe = getStripe();
   
-  // Get subscription details
+  // Get subscription details from Stripe
   const subscriptionId = session.subscription as string;
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId) as any;
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+    expand: ["items.data.price"],
+  }) as any;
   const customerId = session.customer as string;
   const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
 
-  // Store subscription in our database
-  const { error } = await supabaseAdmin.from("secret_stash_subscriptions").insert({
+  // Extract billing interval from Stripe subscription to determine tier
+  const priceItem = subscription.items?.data?.[0];
+  const interval = priceItem?.price?.recurring?.interval || "month";
+  const intervalCount = priceItem?.price?.recurring?.interval_count || 1;
+  const amount = (priceItem?.price?.unit_amount || 0) / 100;
+  
+  // Determine tier name from billing interval
+  let tierName = metadata.tierName || "Monthly Subscription";
+  if (!metadata.tierName || metadata.tierName === "") {
+    if (interval === "year" || (interval === "month" && intervalCount === 12)) {
+      tierName = "Yearly Subscription";
+    } else if (interval === "month" && intervalCount === 3) {
+      tierName = "3 months Subscription";
+    } else if (interval === "month" && intervalCount === 1) {
+      tierName = "1 month Subscription";
+    }
+  }
+
+  const userEmail = metadata.userEmail || customer.email;
+  const userName = metadata.userName || customer.name;
+
+  console.log("[Stripe Webhook] Subscription details:", {
+    subscriptionId,
+    userEmail,
+    interval,
+    intervalCount,
+    amount,
+    tierName,
+  });
+
+  // Cancel any existing OLD subscriptions in the legacy system for this user
+  if (userEmail) {
+    try {
+      const { data: oldSubs } = await supabaseAdmin
+        .from("subscriptions")
+        .select("id")
+        .eq("user_email", userEmail)
+        .in("status", ["active", "pending"]);
+
+      if (oldSubs && oldSubs.length > 0) {
+        console.log("[Stripe Webhook] Cancelling old legacy subscriptions:", oldSubs.map(s => s.id));
+        await supabaseAdmin
+          .from("subscriptions")
+          .update({ status: "cancelled" })
+          .eq("user_email", userEmail)
+          .in("status", ["active", "pending"]);
+      }
+    } catch (err) {
+      console.error("[Stripe Webhook] Error cancelling old subscriptions:", err);
+    }
+  }
+
+  // Cancel any existing Stripe subscriptions for this user (except the new one)
+  if (userEmail) {
+    try {
+      await supabaseAdmin
+        .from("secret_stash_subscriptions")
+        .update({ 
+          status: "superseded",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_email", userEmail)
+        .neq("id", subscriptionId)
+        .in("status", ["active", "trialing"]);
+    } catch (err) {
+      console.error("[Stripe Webhook] Error superseding old Stripe subscriptions:", err);
+    }
+  }
+
+  // Store/update subscription in our database using upsert
+  const subscriptionData = {
     id: subscriptionId,
     stripe_customer_id: customerId,
-    user_email: metadata.userEmail || customer.email,
-    user_name: metadata.userName || customer.name,
-    tier_id: metadata.tierId,
-    tier_name: metadata.tierName,
+    user_email: userEmail,
+    user_name: userName,
+    tier_id: metadata.tierId || null,
+    tier_name: tierName,
     status: subscription.status,
+    amount: amount,
+    billing_interval: interval,
+    billing_interval_count: intervalCount,
     current_period_start: new Date((subscription.current_period_start || 0) * 1000).toISOString(),
     current_period_end: new Date((subscription.current_period_end || 0) * 1000).toISOString(),
     created_at: new Date().toISOString(),
-  });
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabaseAdmin
+    .from("secret_stash_subscriptions")
+    .upsert(subscriptionData, { onConflict: "id" });
 
   if (error) {
-    console.error("Failed to store subscription:", error);
+    console.error("[Stripe Webhook] Failed to store subscription:", error);
+    // Try insert as fallback
+    const { error: insertError } = await supabaseAdmin
+      .from("secret_stash_subscriptions")
+      .insert(subscriptionData);
+    if (insertError) {
+      console.error("[Stripe Webhook] Insert fallback also failed:", insertError);
+    }
+  } else {
+    console.log("[Stripe Webhook] Successfully stored subscription:", subscriptionId);
   }
 
   // Send welcome email
-  const userEmail = metadata.userEmail || customer.email;
   if (userEmail) {
     try {
       await sendWelcomeEmail(
         userEmail,
-        metadata.userName || "friend",
-        metadata.tierName || "Secret Stash Mail Club"
+        userName || "friend",
+        tierName
       );
+      console.log("[Stripe Webhook] Welcome email sent to:", userEmail);
     } catch (emailError) {
-      console.error("Failed to send welcome email:", emailError);
+      console.error("[Stripe Webhook] Failed to send welcome email:", emailError);
     }
   }
 }
@@ -170,19 +261,48 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   const sub = subscription as any;
+  
+  // Extract billing info
+  const priceItem = sub.items?.data?.[0];
+  const interval = priceItem?.price?.recurring?.interval || "month";
+  const intervalCount = priceItem?.price?.recurring?.interval_count || 1;
+  const amount = (priceItem?.price?.unit_amount || 0) / 100;
+
+  // Determine tier name from billing interval
+  let tierName = "Monthly Subscription";
+  if (interval === "year" || (interval === "month" && intervalCount === 12)) {
+    tierName = "Yearly Subscription";
+  } else if (interval === "month" && intervalCount === 3) {
+    tierName = "3 months Subscription";
+  } else if (interval === "month" && intervalCount === 1) {
+    tierName = "1 month Subscription";
+  }
+
+  const updateData: any = {
+    status: sub.status,
+    current_period_start: new Date((sub.current_period_start || 0) * 1000).toISOString(),
+    current_period_end: new Date((sub.current_period_end || 0) * 1000).toISOString(),
+    cancel_at_period_end: sub.cancel_at_period_end,
+    updated_at: new Date().toISOString(),
+  };
+
+  // Only update tier info if we have valid data
+  if (amount > 0) {
+    updateData.amount = amount;
+    updateData.billing_interval = interval;
+    updateData.billing_interval_count = intervalCount;
+    updateData.tier_name = tierName;
+  }
+
   const { error } = await supabaseAdmin
     .from("secret_stash_subscriptions")
-    .update({
-      status: sub.status,
-      current_period_start: new Date((sub.current_period_start || 0) * 1000).toISOString(),
-      current_period_end: new Date((sub.current_period_end || 0) * 1000).toISOString(),
-      cancel_at_period_end: sub.cancel_at_period_end,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq("id", sub.id);
 
   if (error) {
-    console.error("Failed to update subscription:", error);
+    console.error("[Stripe Webhook] Failed to update subscription:", error);
+  } else {
+    console.log("[Stripe Webhook] Updated subscription:", sub.id, "Status:", sub.status);
   }
 }
 

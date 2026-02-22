@@ -24,10 +24,12 @@ export type SecretStashSubscription = {
 
 async function getSecretStashSubscriptions(email: string): Promise<SecretStashSubscription[]> {
   try {
+    // Only fetch active/trialing subscriptions, not superseded or cancelled ones
     const { data, error } = await supabaseAdmin
       .from("secret_stash_subscriptions")
       .select("*")
       .eq("user_email", email)
+      .in("status", ["active", "trialing", "past_due"])
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -61,7 +63,8 @@ export default async function ProfilePage() {
       getSecretStashSubscriptions(email),
     ]);
     orders = all.filter((order) => order.customer?.email === email);
-    subscriptions = subs;
+    // Filter out cancelled subscriptions from legacy system
+    subscriptions = subs.filter((s) => s.status !== "cancelled");
     secretStashSubscriptions = secretStashSubs;
   }
 
