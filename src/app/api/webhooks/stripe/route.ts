@@ -270,7 +270,63 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 }
 
 async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
-  console.log("Subscription created:", subscription.id);
+  console.log("[Stripe Webhook] Processing customer.subscription.created");
+  const sub = subscription as any;
+  
+  // Get customer details
+  const stripe = getStripe();
+  const customer = await stripe.customers.retrieve(sub.customer as string) as Stripe.Customer;
+  
+  // Extract billing info
+  const priceItem = sub.items?.data?.[0];
+  const interval = priceItem?.price?.recurring?.interval || "month";
+  const intervalCount = priceItem?.price?.recurring?.interval_count || 1;
+  const amount = (priceItem?.price?.unit_amount || 0) / 100;
+  
+  // Determine tier name from billing interval
+  let tierName = "Monthly Subscription";
+  if (interval === "year" || (interval === "month" && intervalCount === 12)) {
+    tierName = "Yearly Subscription";
+  } else if (interval === "month" && intervalCount === 3) {
+    tierName = "3 months Subscription";
+  } else if (interval === "month" && intervalCount === 1) {
+    tierName = "1 month Subscription";
+  }
+
+  const subscriptionData = {
+    id: sub.id,
+    stripe_customer_id: sub.customer,
+    user_email: customer.email,
+    user_name: customer.name,
+    tier_id: null,
+    tier_name: tierName,
+    status: sub.status,
+    amount: amount,
+    billing_interval: interval,
+    billing_interval_count: intervalCount,
+    current_period_start: new Date((sub.current_period_start || 0) * 1000).toISOString(),
+    current_period_end: new Date((sub.current_period_end || 0) * 1000).toISOString(),
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  console.log("[Stripe Webhook] Storing subscription from created event:", {
+    subscriptionId: sub.id,
+    userEmail: customer.email,
+    tierName,
+    interval,
+    amount,
+  });
+
+  const { error } = await supabaseAdmin
+    .from("secret_stash_subscriptions")
+    .upsert(subscriptionData, { onConflict: "id" });
+
+  if (error) {
+    console.error("[Stripe Webhook] Failed to store subscription from created event:", error);
+  } else {
+    console.log("[Stripe Webhook] Successfully stored subscription from created event:", sub.id);
+  }
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
