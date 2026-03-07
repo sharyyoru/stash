@@ -107,15 +107,32 @@ export async function GET(req: NextRequest) {
     }));
 
     // Calculate summary stats
+    const activeSubscriptions = subscriptions?.filter((s) => s.status === "active") || [];
+    const monthlyRevenue = activeSubscriptions.reduce((sum, sub) => {
+      if (sub.billing_interval === "year") {
+        return sum + ((sub.amount || 0) / 12);
+      }
+      return sum + (sub.amount || 0);
+    }, 0);
+    
+    const yearlyRevenue = activeSubscriptions.reduce((sum, sub) => {
+      if (sub.billing_interval === "month") {
+        return sum + ((sub.amount || 0) * 12);
+      }
+      return sum + (sub.amount || 0);
+    }, 0);
+
     const stats = {
       total: subscriptions?.length || 0,
-      active: subscriptions?.filter((s) => s.status === "active").length || 0,
+      active: activeSubscriptions.length,
       cancelled: subscriptions?.filter((s) => s.status === "cancelled").length || 0,
       pastDue: subscriptions?.filter((s) => s.status === "past_due").length || 0,
       pendingLetters: enrichedSubscriptions.filter(
         (s) => s.status === "active" && !s.currentMonthDelivery?.status
       ).length,
       sentLetters: deliveries?.filter((d) => d.status === "sent" || d.status === "delivered").length || 0,
+      monthlyRevenue,
+      yearlyRevenue,
     };
 
     return NextResponse.json({ subscriptions: enrichedSubscriptions, stats });
@@ -154,15 +171,24 @@ export async function POST(req: NextRequest) {
 
       if (existing) {
         // Update existing
+        const updateData: any = {
+          status: status || "sent",
+          notes: notes || existing.notes,
+          tracking_number: trackingNumber || existing.tracking_number,
+          updated_at: new Date().toISOString(),
+        };
+        
+        if (status === "sent" && !existing.sent_at) {
+          updateData.sent_at = new Date().toISOString();
+        }
+        
+        if (status === "delivered" && !existing.delivered_at) {
+          updateData.delivered_at = new Date().toISOString();
+        }
+
         const { error } = await supabaseAdmin
           .from("secret_stash_deliveries")
-          .update({
-            status: status || "sent",
-            sent_at: status === "sent" ? new Date().toISOString() : existing.sent_at,
-            notes: notes || existing.notes,
-            tracking_number: trackingNumber || existing.tracking_number,
-            updated_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq("id", existing.id);
 
         if (error) throw error;
@@ -173,6 +199,7 @@ export async function POST(req: NextRequest) {
           month: targetMonth,
           status: status || "sent",
           sent_at: status === "sent" ? new Date().toISOString() : null,
+          delivered_at: status === "delivered" ? new Date().toISOString() : null,
           notes: notes || null,
           tracking_number: trackingNumber || null,
           created_at: new Date().toISOString(),

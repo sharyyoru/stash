@@ -30,6 +30,7 @@ type CurrentMonthDelivery = {
   sent_at?: string;
   tracking_number?: string;
   notes?: string;
+  delivered_at?: string;
 };
 
 type SecretStashSubscription = {
@@ -40,6 +41,9 @@ type SecretStashSubscription = {
   tier_id?: string;
   tier_name?: string;
   status: SubscriptionStatus;
+  amount?: number;
+  billing_interval?: string;
+  billing_interval_count?: number;
   current_period_start: string;
   current_period_end: string;
   cancel_at_period_end?: boolean;
@@ -57,6 +61,8 @@ type Stats = {
   pastDue: number;
   pendingLetters: number;
   sentLetters: number;
+  monthlyRevenue: number;
+  yearlyRevenue: number;
 };
 
 const statusColors: Record<string, string> = {
@@ -119,6 +125,9 @@ export default function AdminSecretStashPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | SubscriptionStatus>("all");
   const [letterFilter, setLetterFilter] = useState<"all" | "pending" | "sent">("all");
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
+  const [tierFilter, setTierFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"created" | "name" | "email" | "status">("created");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Selection for bulk actions
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -126,6 +135,10 @@ export default function AdminSecretStashPage() {
   // Action states
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  
+  // Tracking and notes state
+  const [trackingInputs, setTrackingInputs] = useState<Record<string, string>>({});
+  const [notesInputs, setNotesInputs] = useState<Record<string, string>>({});
 
   // Monthly report view
   const [showReport, setShowReport] = useState(false);
@@ -170,7 +183,45 @@ export default function AdminSecretStashPage() {
     }
   };
 
-  const markLetterSent = async (subscriptionId: string, status: DeliveryStatus = "sent") => {
+  const exportToCSV = () => {
+    const headers = [
+      "ID", "Email", "Name", "Tier", "Status", "Amount", "Billing Interval",
+      "Created", "Period Start", "Period End", "Mobile", "Address", "Area", "City",
+      `${formatMonth(selectedMonth)} Letter Status`
+    ];
+    
+    const rows = filteredSubscriptions.map(sub => [
+      sub.id,
+      sub.user_email,
+      sub.user_name || "",
+      sub.tier_name || "",
+      sub.status,
+      sub.amount ? `AED ${sub.amount}` : "",
+      sub.billing_interval || "",
+      formatDate(sub.created_at),
+      formatDate(sub.current_period_start),
+      formatDate(sub.current_period_end),
+      sub.profile?.mobile || "",
+      sub.profile?.address_line1 || "",
+      sub.profile?.area || "",
+      sub.profile?.city || "",
+      sub.currentMonthDelivery?.status || (sub.status === "active" ? "pending" : "—")
+    ]);
+    
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${cell}"`).join(","))
+      .join("\n");
+    
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `secret-stash-${selectedMonth}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const markLetterSent = async (subscriptionId: string, status: DeliveryStatus = "sent", trackingNumber?: string, notes?: string) => {
     setActionLoading(subscriptionId);
     setActionMessage(null);
 
@@ -183,6 +234,8 @@ export default function AdminSecretStashPage() {
           subscriptionId,
           month: selectedMonth,
           status,
+          trackingNumber,
+          notes,
         }),
       });
 
@@ -262,13 +315,19 @@ export default function AdminSecretStashPage() {
           s.id.toLowerCase().includes(q) ||
           s.user_email.toLowerCase().includes(q) ||
           (s.user_name?.toLowerCase().includes(q) ?? false) ||
-          (s.tier_name?.toLowerCase().includes(q) ?? false)
+          (s.tier_name?.toLowerCase().includes(q) ?? false) ||
+          (s.profile?.mobile?.includes(q) ?? false)
       );
     }
 
     // Status filter
     if (statusFilter !== "all") {
       result = result.filter((s) => s.status === statusFilter);
+    }
+
+    // Tier filter
+    if (tierFilter !== "all") {
+      result = result.filter((s) => s.tier_name === tierFilter);
     }
 
     // Letter status filter
@@ -285,8 +344,37 @@ export default function AdminSecretStashPage() {
       });
     }
 
+    // Sorting
+    result.sort((a, b) => {
+      let aValue: any, bValue: any;
+      
+      switch (sortBy) {
+        case "name":
+          aValue = a.user_name || "";
+          bValue = b.user_name || "";
+          break;
+        case "email":
+          aValue = a.user_email;
+          bValue = b.user_email;
+          break;
+        case "status":
+          aValue = a.status;
+          bValue = b.status;
+          break;
+        case "created":
+        default:
+          aValue = new Date(a.created_at).getTime();
+          bValue = new Date(b.created_at).getTime();
+          break;
+      }
+      
+      if (aValue < bValue) return sortOrder === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortOrder === "asc" ? 1 : -1;
+      return 0;
+    });
+
     return result;
-  }, [subscriptions, searchQuery, statusFilter, letterFilter]);
+  }, [subscriptions, searchQuery, statusFilter, letterFilter, tierFilter, sortBy, sortOrder]);
 
   if (sessionStatus === "loading" || loading) {
     return (
@@ -332,6 +420,11 @@ export default function AdminSecretStashPage() {
             <h1 className="text-xl font-semibold tracking-tight text-neutral-900">
               Secret Stash Mail Club
             </h1>
+            {stats && (
+              <p className="text-xs text-neutral-500 mt-1">
+                {stats.active} active • {stats.pendingLetters} pending letters • AED {(stats.monthlyRevenue || 0).toFixed(0)}/month
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <Link
@@ -379,7 +472,7 @@ export default function AdminSecretStashPage() {
 
         {/* Stats Cards */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-8 gap-4">
             <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-neutral-100">
               <p className="text-xs text-neutral-500 uppercase tracking-wide">Total</p>
               <p className="text-2xl font-bold text-neutral-900">{stats.total}</p>
@@ -403,6 +496,18 @@ export default function AdminSecretStashPage() {
             <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 p-4 shadow-sm ring-1 ring-blue-200">
               <p className="text-xs text-blue-700 uppercase tracking-wide">Sent This Month</p>
               <p className="text-2xl font-bold text-blue-800">{stats.sentLetters}</p>
+            </div>
+            <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 shadow-sm ring-1 ring-emerald-200">
+              <p className="text-xs text-emerald-700 uppercase tracking-wide">Monthly Revenue</p>
+              <p className="text-2xl font-bold text-emerald-800">
+                AED {(stats.monthlyRevenue || 0).toFixed(0)}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-gradient-to-br from-purple-50 to-purple-100 p-4 shadow-sm ring-1 ring-purple-200">
+              <p className="text-xs text-purple-700 uppercase tracking-wide">Yearly Revenue</p>
+              <p className="text-2xl font-bold text-purple-800">
+                AED {(stats.yearlyRevenue || 0).toFixed(0)}
+              </p>
             </div>
           </div>
         )}
@@ -474,6 +579,38 @@ export default function AdminSecretStashPage() {
               <option value="pending">Pending</option>
               <option value="sent">Sent</option>
             </select>
+
+            {/* Tier Filter */}
+            <select
+              value={tierFilter}
+              onChange={(e) => setTierFilter(e.target.value)}
+              className="rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm text-neutral-700 focus:border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-100"
+            >
+              <option value="all">All Tiers</option>
+              <option value="1 month Subscription">1 Month</option>
+              <option value="3 months Subscription">3 Months</option>
+              <option value="Yearly Subscription">Yearly</option>
+            </select>
+
+            {/* Sort Options */}
+            <div className="flex items-center gap-2">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-700 focus:border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-100"
+              >
+                <option value="created">Sort by Date</option>
+                <option value="name">Sort by Name</option>
+                <option value="email">Sort by Email</option>
+                <option value="status">Sort by Status</option>
+              </select>
+              <button
+                onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                className="rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 focus:border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-100"
+              >
+                {sortOrder === "asc" ? "↑" : "↓"}
+              </button>
+            </div>
           </div>
 
           {/* Bulk Actions */}
@@ -513,6 +650,15 @@ export default function AdminSecretStashPage() {
                     Mark Selected as Sent
                   </>
                 )}
+              </button>
+              <button
+                onClick={exportToCSV}
+                className="inline-flex items-center rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+              >
+                <svg className="mr-1.5 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export CSV
               </button>
               <button
                 onClick={fetchSubscriptions}
@@ -599,10 +745,17 @@ export default function AdminSecretStashPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-neutral-700">{sub.tier_name || "Standard"}</span>
-                          <p className="text-[10px] text-neutral-400">
-                            Since {formatDate(sub.created_at)}
-                          </p>
+                          <div>
+                            <span className="text-neutral-700 font-medium">{sub.tier_name || "Standard"}</span>
+                            {sub.amount && (
+                              <p className="text-[10px] text-emerald-600 font-medium">
+                                AED {sub.amount}/{sub.billing_interval || "month"}
+                              </p>
+                            )}
+                            <p className="text-[10px] text-neutral-400">
+                              Since {formatDate(sub.created_at)}
+                            </p>
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusColors[sub.status] || "bg-neutral-100 text-neutral-800"}`}>
@@ -645,23 +798,64 @@ export default function AdminSecretStashPage() {
                         </td>
                         <td className="px-4 py-3">
                           {sub.status === "active" && (
-                            <div className="flex flex-wrap gap-1">
+                            <div className="space-y-2">
                               {isPending ? (
-                                <button
-                                  onClick={() => markLetterSent(sub.id, "sent")}
-                                  disabled={actionLoading === sub.id}
-                                  className="inline-flex items-center rounded-full bg-blue-100 px-2 py-1 text-[10px] font-medium text-blue-800 hover:bg-blue-200 disabled:opacity-50"
-                                >
-                                  {actionLoading === sub.id ? "..." : "Mark Sent"}
-                                </button>
+                                <div className="space-y-2">
+                                  <input
+                                    type="text"
+                                    placeholder="Tracking # (optional)"
+                                    value={trackingInputs[sub.id] || ""}
+                                    onChange={(e) => setTrackingInputs(prev => ({ ...prev, [sub.id]: e.target.value }))}
+                                    className="w-full rounded border border-neutral-200 px-2 py-1 text-xs focus:border-purple-300 focus:outline-none"
+                                  />
+                                  <input
+                                    type="text"
+                                    placeholder="Notes (optional)"
+                                    value={notesInputs[sub.id] || ""}
+                                    onChange={(e) => setNotesInputs(prev => ({ ...prev, [sub.id]: e.target.value }))}
+                                    className="w-full rounded border border-neutral-200 px-2 py-1 text-xs focus:border-purple-300 focus:outline-none"
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      markLetterSent(sub.id, "sent", trackingInputs[sub.id], notesInputs[sub.id]);
+                                      setTrackingInputs(prev => ({ ...prev, [sub.id]: "" }));
+                                      setNotesInputs(prev => ({ ...prev, [sub.id]: "" }));
+                                    }}
+                                    disabled={actionLoading === sub.id}
+                                    className="w-full inline-flex items-center rounded-full bg-blue-100 px-2 py-1 text-[10px] font-medium text-blue-800 hover:bg-blue-200 disabled:opacity-50"
+                                  >
+                                    {actionLoading === sub.id ? "..." : "Mark Sent"}
+                                  </button>
+                                </div>
                               ) : deliveryStatus === "sent" ? (
-                                <button
-                                  onClick={() => markLetterSent(sub.id, "delivered")}
-                                  disabled={actionLoading === sub.id}
-                                  className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-[10px] font-medium text-green-800 hover:bg-green-200 disabled:opacity-50"
-                                >
-                                  {actionLoading === sub.id ? "..." : "Mark Delivered"}
-                                </button>
+                                <div className="space-y-1">
+                                  {sub.currentMonthDelivery?.tracking_number && (
+                                    <p className="text-[10px] text-neutral-600">
+                                      Tracking: {sub.currentMonthDelivery.tracking_number}
+                                    </p>
+                                  )}
+                                  {sub.currentMonthDelivery?.notes && (
+                                    <p className="text-[10px] text-neutral-600">
+                                      {sub.currentMonthDelivery.notes}
+                                    </p>
+                                  )}
+                                  <button
+                                    onClick={() => markLetterSent(sub.id, "delivered")}
+                                    disabled={actionLoading === sub.id}
+                                    className="w-full inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-[10px] font-medium text-green-800 hover:bg-green-200 disabled:opacity-50"
+                                  >
+                                    {actionLoading === sub.id ? "..." : "Mark Delivered"}
+                                  </button>
+                                </div>
+                              ) : deliveryStatus === "delivered" ? (
+                                <div className="text-[10px] text-green-600 font-medium">
+                                  ✓ Delivered
+                                  {sub.currentMonthDelivery?.delivered_at && (
+                                    <p className="text-neutral-500 mt-0.5">
+                                      {formatDate(sub.currentMonthDelivery.delivered_at)}
+                                    </p>
+                                  )}
+                                </div>
                               ) : null}
                             </div>
                           )}
