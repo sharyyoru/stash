@@ -76,31 +76,67 @@ export default function ProfileClient({ name, email, image, orders = [], subscri
   const storageKey = email ? `${STORAGE_PREFIX}:${email}` : undefined;
 
   useEffect(() => {
-    if (!storageKey) return;
-    try {
-      const raw = window.localStorage.getItem(storageKey);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as Partial<Address>;
-      setAddress((prev) => ({
-        ...prev,
-        line1: parsed.line1 ?? prev.line1,
-        line2: parsed.line2 ?? prev.line2,
-        landmark: parsed.landmark ?? prev.landmark,
-        city: parsed.city ?? prev.city,
-        state: parsed.state ?? prev.state,
-        postalCode: parsed.postalCode ?? prev.postalCode,
-        country: parsed.country ?? prev.country,
-        mobile: parsed.mobile ?? prev.mobile,
-        whatsapp: parsed.whatsapp ?? prev.whatsapp,
-        whatsappSameAsMobile:
-          typeof parsed.whatsappSameAsMobile === "boolean"
-            ? parsed.whatsappSameAsMobile
-            : prev.whatsappSameAsMobile,
-        dateOfBirth: parsed.dateOfBirth ?? prev.dateOfBirth,
-      }));
-    } catch {
-      // ignore
-    }
+    // Load address from database first, then fallback to local storage
+    const loadAddress = async () => {
+      try {
+        const response = await fetch("/api/profile/address");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.address) {
+            setAddress((prev) => ({
+              ...prev,
+              line1: data.address.line1 ?? prev.line1,
+              line2: data.address.line2 ?? prev.line2,
+              landmark: data.address.landmark ?? prev.landmark,
+              city: data.address.city ?? prev.city,
+              state: data.address.state ?? prev.state,
+              postalCode: data.address.postalCode ?? prev.postalCode,
+              country: data.address.country ?? prev.country,
+              mobile: data.address.mobile ?? prev.mobile,
+              whatsapp: data.address.whatsapp ?? prev.whatsapp,
+              whatsappSameAsMobile:
+                typeof data.address.whatsappSameAsMobile === "boolean"
+                  ? data.address.whatsappSameAsMobile
+                  : prev.whatsappSameAsMobile,
+              dateOfBirth: data.address.dateOfBirth ?? prev.dateOfBirth,
+            }));
+            return; // Don't load from local storage if we have database data
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load address from database:", error);
+      }
+
+      // Fallback to local storage
+      if (!storageKey) return;
+      try {
+        const raw = window.localStorage.getItem(storageKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          setAddress((prev) => ({
+            ...prev,
+            line1: parsed.line1 ?? prev.line1,
+            line2: parsed.line2 ?? prev.line2,
+            landmark: parsed.landmark ?? prev.landmark,
+            city: parsed.city ?? prev.city,
+            state: parsed.state ?? prev.state,
+            postalCode: parsed.postalCode ?? prev.postalCode,
+            country: parsed.country ?? prev.country,
+            mobile: parsed.mobile ?? prev.mobile,
+            whatsapp: parsed.whatsapp ?? prev.whatsapp,
+            whatsappSameAsMobile:
+              typeof parsed.whatsappSameAsMobile === "boolean"
+                ? parsed.whatsappSameAsMobile
+                : prev.whatsappSameAsMobile,
+            dateOfBirth: parsed.dateOfBirth ?? prev.dateOfBirth,
+          }));
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    loadAddress();
   }, [storageKey]);
 
   const handleChange = (field: keyof Address, value: Address[keyof Address]) => {
@@ -123,15 +159,33 @@ export default function ProfileClient({ name, email, image, orders = [], subscri
     });
   };
 
-  const handleSave = (event: React.FormEvent) => {
+  const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!storageKey) return;
+    setStatus("Saving...");
+    
     try {
-      window.localStorage.setItem(storageKey, JSON.stringify(address));
+      // Save to database
+      const response = await fetch("/api/profile/address", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(address),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to save address");
+      }
+
+      // Also save to local storage as backup
+      if (storageKey) {
+        window.localStorage.setItem(storageKey, JSON.stringify(address));
+      }
+
       setStatus("Saved");
       window.setTimeout(() => setStatus(""), 2000);
-    } catch {
-      setStatus("Could not save. Check your browser storage settings.");
+    } catch (error: any) {
+      setStatus(error.message || "Could not save address");
+      window.setTimeout(() => setStatus(""), 3000);
     }
   };
 

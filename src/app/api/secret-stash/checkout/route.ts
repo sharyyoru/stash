@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { createCheckoutSession, getOrCreateCustomer } from "../../../../lib/stripe";
+import { supabaseAdmin } from "../../../../lib/supabase-admin";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -16,6 +17,31 @@ export async function POST(req: NextRequest) {
   }
 
   const { priceId, tierId, tierName } = body;
+
+  // Validate that user has a delivery address
+  const { data: profile } = await supabaseAdmin
+    .from("profiles")
+    .select("address")
+    .eq("email", session.user.email)
+    .single();
+
+  if (!profile?.address) {
+    return NextResponse.json({ 
+      error: "Delivery address required. Please complete your profile address before subscribing.",
+      code: "ADDRESS_REQUIRED"
+    }, { status: 400 });
+  }
+
+  // Validate required address fields
+  const requiredFields = ["line1", "city", "state", "postalCode", "country", "mobile", "dateOfBirth"];
+  const missingFields = requiredFields.filter(field => !profile.address[field]);
+  
+  if (missingFields.length > 0) {
+    return NextResponse.json({ 
+      error: `Please complete your address details. Missing: ${missingFields.join(", ")}`,
+      code: "INCOMPLETE_ADDRESS"
+    }, { status: 400 });
+  }
 
   try {
     // Get or create Stripe customer
