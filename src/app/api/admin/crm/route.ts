@@ -32,27 +32,52 @@ export async function GET(req: NextRequest) {
     let query = supabaseAdmin
       .from("profiles")
       .select("*", { count: "exact" })
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+      .order("created_at", { ascending: false });
 
     // Apply search filter
     if (search) {
       query = query.or(`email.ilike.%${search}%,name.ilike.%${search}%,mobile.ilike.%${search}%`);
     }
 
-    const { data: profiles, error: profilesError, count: profilesCount } = await query;
+    const { data: allProfiles, error: profilesError, count: profilesCount } = await query;
 
     if (profilesError) throw profilesError;
 
-    // Get subscription counts for each user
-    const userEmails = (profiles || []).map(p => p.email);
-    const { data: subscriptions } = await supabaseAdmin
-      .from("secret_stash_subscriptions")
-      .select("user_email, status")
-      .in("user_email", userEmails);
+    console.log("[CRM Debug] Total profiles found:", allProfiles?.length || 0);
+    console.log("[CRM Debug] Sample profiles:", allProfiles?.slice(0, 3));
+    console.log("[CRM Debug] Search term:", search);
+    console.log("[CRM Debug] Filters:", { hasSubscription, hasOrders, hasAddress });
 
+    // Get ALL users - combine profiles and orders
+    const profileEmails = (allProfiles || []).map(p => p.email);
+    
+    // Get all orders to find buyers who might not have profiles
+    const { data: allOrders } = await supabaseAdmin
+      .from("orders")
+      .select("customer_email, status, total_amount, created_at");
+    
+    // Get all subscriptions
+    const { data: allSubscriptions } = await supabaseAdmin
+      .from("secret_stash_subscriptions")
+      .select("user_email, status, created_at");
+
+    // Combine all unique emails from profiles, orders, and subscriptions
+    const allUserEmails = new Set([
+      ...profileEmails,
+      ...(allOrders || []).map(o => o.customer_email),
+      ...(allSubscriptions || []).map(s => s.user_email),
+    ]);
+
+    console.log("[CRM Debug] All unique user emails:", allUserEmails.size);
+    console.log("[CRM Debug] Sources:", {
+      profiles: profileEmails.length,
+      orders: allOrders?.length || 0,
+      subscriptions: allSubscriptions?.length || 0,
+    });
+
+    // Get subscription counts
     const subscriptionCounts = new Map();
-    (subscriptions || []).forEach(sub => {
+    (allSubscriptions || []).forEach(sub => {
       const current = subscriptionCounts.get(sub.user_email) || { total: 0, active: 0 };
       subscriptionCounts.set(sub.user_email, {
         total: current.total + 1,
@@ -60,15 +85,10 @@ export async function GET(req: NextRequest) {
       });
     });
 
-    // Get order counts for each user
-    const { data: orders } = await supabaseAdmin
-      .from("orders")
-      .select("customer_email, status, total_amount")
-      .in("customer_email", userEmails);
-
+    // Get order counts and total spent
     const orderCounts = new Map();
     const totalSpent = new Map();
-    (orders || []).forEach(order => {
+    (allOrders || []).forEach(order => {
       const current = orderCounts.get(order.customer_email) || 0;
       orderCounts.set(order.customer_email, current + 1);
       
@@ -76,13 +96,16 @@ export async function GET(req: NextRequest) {
       totalSpent.set(order.customer_email, spent + (order.total_amount || 0));
     });
 
-    // Combine and filter data
-    let users = (profiles || []).map(profile => {
+    // Create user objects for ALL users (profiles + orders-only users)
+    let allUsers: any[] = [];
+
+    // Add users with profiles
+    (allProfiles || []).forEach(profile => {
       const subs = subscriptionCounts.get(profile.email) || { total: 0, active: 0 };
       const orders = orderCounts.get(profile.email) || 0;
       const spent = totalSpent.get(profile.email) || 0;
 
-      return {
+      allUsers.push({
         id: profile.id,
         email: profile.email,
         name: profile.name,
@@ -95,33 +118,78 @@ export async function GET(req: NextRequest) {
         active_subscriptions: subs.active,
         order_count: orders,
         total_spent: spent,
-      };
+        has_profile: true,
+      });
     });
+
+    // Add users from orders who don't have profiles
+    const profileEmailSet = new Set(profileEmails);
+    (allOrders || []).forEach(order => {
+      if (!profileEmailSet.has(order.customer_email)) {
+        const subs = subscriptionCounts.get(order.customer_email) || { total: 0, active: 0 };
+        const orders = orderCounts.get(order.customer_email) || 0;
+        const spent = totalSpent.get(order.customer_email) || 0;
+
+        // Check if we already added this user
+        const existingUser = allUsers.find(u => u.email === order.customer_email);
+        if (!existingUser) {
+          allUsers.push({
+            id: `order-${order.customer_email}`,
+            email: order.customer_email,
+            name: null,
+            mobile: null,
+            address: null,
+            created_at: order.created_at,
+            updated_at: null,
+            last_login: null,
+            subscription_count: subs.total,
+            active_subscriptions: subs.active,
+            order_count: orders,
+            total_spent: spent,
+            has_profile: false,
+          });
+        }
+      }
+    });
+
+    console.log("[CRM Debug] Total combined users:", allUsers.length);
+
+    // Apply search filter
+    let filteredUsers = allUsers;
+    if (search) {
+      filteredUsers = allUsers.filter(user => 
+        user.email?.toLowerCase().includes(search.toLowerCase()) ||
+        user.name?.toLowerCase().includes(search.toLowerCase()) ||
+        user.mobile?.toLowerCase().includes(search.toLowerCase())
+      );
+    }
 
     // Apply additional filters
     if (hasSubscription !== "all") {
-      users = users.filter(user => 
+      filteredUsers = filteredUsers.filter(user => 
         hasSubscription === "yes" ? user.subscription_count > 0 : user.subscription_count === 0
       );
     }
 
     if (hasOrders !== "all") {
-      users = users.filter(user => 
+      filteredUsers = filteredUsers.filter(user => 
         hasOrders === "yes" ? user.order_count > 0 : user.order_count === 0
       );
     }
 
     if (hasAddress !== "all") {
-      users = users.filter(user => 
+      filteredUsers = filteredUsers.filter(user => 
         hasAddress === "yes" ? !!user.address : !user.address
       );
     }
 
+    console.log("[CRM Debug] Final filtered users:", filteredUsers.length);
+
     // Apply pagination after filtering
     const filteredStart = offset;
     const filteredEnd = offset + limit - 1;
-    const paginatedUsers = users.slice(filteredStart, filteredEnd + 1);
-    const filteredTotal = users.length;
+    const paginatedUsers = filteredUsers.slice(filteredStart, filteredEnd + 1);
+    const filteredTotal = filteredUsers.length;
 
     return NextResponse.json({
       users: paginatedUsers,
