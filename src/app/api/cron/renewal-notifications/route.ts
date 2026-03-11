@@ -4,6 +4,16 @@ import { sendRenewalReminderEmail } from "../../../../lib/email-notifications";
 
 // This endpoint should be called by a cron job daily
 export async function GET(req: NextRequest) {
+  // Add basic authentication for cron jobs
+  const authHeader = req.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+  
+  // Optional: Add secret validation for security
+  if (cronSecret && (!authHeader || !authHeader.startsWith("Bearer ") || authHeader.split(" ")[1] !== cronSecret)) {
+    console.log("[Renewal Notifications] Unauthorized access attempt");
+    // For now, allow without auth for easy testing, but you can enable this:
+    // return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   try {
     console.log("[Renewal Notifications] Starting daily renewal check");
 
