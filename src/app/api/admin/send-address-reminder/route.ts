@@ -115,6 +115,26 @@ export async function POST(req: NextRequest) {
 
     const success = await sendAddressReminderEmail(userEmail, userName || "friend");
 
+    // Log the email
+    try {
+      await fetch("/api/admin/email-logs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: userEmail,
+          subject: "📦 Action Required: Update Your Delivery Address for Secret Stash",
+          type: "address_reminder",
+          status: success ? "sent" : "failed",
+          details: {
+            userName: userName || "friend",
+            triggeredBy: session.user.email,
+          },
+        }),
+      });
+    } catch (logError) {
+      console.error("Failed to log email:", logError);
+    }
+
     if (success) {
       return NextResponse.json({
         success: true,

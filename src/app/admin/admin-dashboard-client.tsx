@@ -170,6 +170,27 @@ export default function AdminDashboardClient({ data }: { data: DashboardData }) 
           </Link>
 
           <Link
+            href="/admin/crm"
+            className="group rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 shadow-sm ring-1 ring-emerald-200 transition-all hover:shadow-md hover:ring-emerald-300"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="rounded-full bg-emerald-100 p-3">
+                <svg className="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2a3 3 0 00-5.356-1.857M7 20H2v-2a3 3 0 015.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <svg className="h-5 w-5 text-emerald-400 group-hover:text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+            <h3 className="font-semibold text-emerald-900 mb-1">CRM</h3>
+            <p className="text-2xl font-bold text-emerald-900 mb-1">{data.subscriptions.total}</p>
+            <p className="text-xs text-emerald-700">
+              Total users
+            </p>
+          </Link>
+
+          <Link
             href="/admin/stripe-sync"
             className="group rounded-2xl bg-white p-6 shadow-sm ring-1 ring-neutral-100 transition-all hover:shadow-md hover:ring-neutral-200"
           >
