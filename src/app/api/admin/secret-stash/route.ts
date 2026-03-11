@@ -91,6 +91,11 @@ export async function GET(req: NextRequest) {
 
     const profileMap = new Map((profiles || []).map((p) => [p.email, p]));
 
+    // Debug: Log profile data to check addresses
+    console.log("[Admin Debug] Profiles found:", profiles?.length || 0);
+    console.log("[Admin Debug] Sample profile:", profiles?.[0]);
+    console.log("[Admin Debug] Subscription sample:", subscriptions?.[0]);
+
     // Get current month's delivery status for each subscription
     const deliveryMonth = new Date().toISOString().slice(0, 7);
     const { data: deliveries } = await supabaseAdmin

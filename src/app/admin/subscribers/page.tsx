@@ -20,6 +20,19 @@ type Profile = {
   city?: string;
   emirate?: string;
   landmark?: string;
+  address?: {
+    line1: string;
+    line2: string;
+    landmark: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+    mobile: string;
+    whatsapp: string;
+    whatsappSameAsMobile: boolean;
+    dateOfBirth: string;
+  };
 };
 
 type CurrentMonthDelivery = {
@@ -83,9 +96,23 @@ const deliveryStatusColors: Record<string, string> = {
 
 function formatDate(iso: string): string {
   if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-AE", {
+  
+  // Handle Unix timestamp (number)
+  let date: Date;
+  if (typeof iso === "number" || /^\d+$/.test(iso)) {
+    date = new Date(parseInt(iso) * 1000);
+  } else {
+    date = new Date(iso);
+  }
+  
+  if (Number.isNaN(date.getTime())) return "—";
+  
+  // Check if it's Jan 1 1970 (invalid timestamp)
+  if (date.getFullYear() === 1970 && date.getMonth() === 0 && date.getDate() === 1) {
+    return "—";
+  }
+  
+  return date.toLocaleDateString("en-AE", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -247,6 +274,28 @@ export default function AdminSubscribersPage() {
       setActionMessage({ type: "error", text: err.message });
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const sendAddressReminder = async (userEmail: string, userName: string) => {
+    try {
+      const res = await fetch("/api/admin/send-address-reminder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userEmail,
+          userName,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to send reminder");
+      }
+
+      setActionMessage({ type: "success", text: `Address reminder sent to ${userEmail}!` });
+    } catch (err: any) {
+      setActionMessage({ type: "error", text: err.message });
     }
   };
 
@@ -770,18 +819,29 @@ export default function AdminSubscribersPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 max-w-[200px]">
-                          {profile ? (
+                          {profile?.address ? (
                             <div className="text-xs text-neutral-600">
-                              {profile.address_line1 && <p>{profile.address_line1}</p>}
-                              {profile.building && <p>{profile.building}</p>}
-                              {profile.area && <p>{profile.area}</p>}
-                              {(profile.city || profile.emirate) && (
-                                <p>{[profile.city, profile.emirate].filter(Boolean).join(", ")}</p>
+                              <p>{profile.address.line1}</p>
+                              {profile.address.line2 && <p>{profile.address.line2}</p>}
+                              {profile.address.landmark && <p>{profile.address.landmark}</p>}
+                              <p>{[profile.address.city, profile.address.state].filter(Boolean).join(", ")}</p>
+                              <p>{profile.address.postalCode}</p>
+                              <p>{profile.address.country}</p>
+                              <p className="text-neutral-500 mt-1">📱 {profile.address.mobile}</p>
+                              {profile.address.whatsapp && profile.address.whatsapp !== profile.address.mobile && (
+                                <p className="text-neutral-500">💬 {profile.address.whatsapp}</p>
                               )}
-                              {profile.landmark && <p className="text-neutral-400">{profile.landmark}</p>}
                             </div>
                           ) : (
-                            <span className="text-neutral-400 text-xs">No address</span>
+                            <div className="flex flex-col gap-2">
+                              <span className="text-neutral-400 text-xs">No address</span>
+                              <button
+                                onClick={() => sendAddressReminder(sub.user_email, sub.user_name || "")}
+                                className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+                              >
+                                📧 Send Reminder
+                              </button>
+                            </div>
                           )}
                         </td>
                         <td className="px-4 py-3">
