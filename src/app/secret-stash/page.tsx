@@ -46,6 +46,23 @@ export default async function SecretStashPage() {
     getServerSession(authOptions),
   ]);
 
+  // Add 6-month subscription if not already present
+  if (pageData && pageData.pricingTiers) {
+    const hasSixMonth = pageData.pricingTiers.some(tier => tier.billingPeriod === "half-year");
+    if (!hasSixMonth) {
+      pageData.pricingTiers.push({
+        _key: "six-month-tier",
+        id: "six-month",
+        name: "6 Months Subscription",
+        price: 269, // You can adjust this price
+        billingPeriod: "half-year",
+        stripePriceId: "price_1T9mOK1qJ0GuI3TsJ6DfcRIa",
+        savings: "Save 10%",
+        isPopular: false,
+      });
+    }
+  }
+
   const isSignedIn = Boolean(session?.user);
   const userEmail = session?.user?.email || undefined;
   const userName = session?.user?.name || undefined;
