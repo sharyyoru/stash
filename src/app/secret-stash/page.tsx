@@ -19,7 +19,7 @@ type SecretStashPageData = {
     id: string;
     name: string;
     price: number;
-    billingPeriod: "month" | "quarter" | "year";
+    billingPeriod: "month" | "quarter" | "half-year" | "year";
     stripePriceId: string;
     savings?: string;
     isPopular?: boolean;

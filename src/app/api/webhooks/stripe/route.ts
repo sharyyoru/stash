@@ -27,7 +27,7 @@ async function sendWelcomeEmail(to: string, name: string, tierName: string): Pro
           <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
             <h1 style="color: #4eb8d5;">Welcome to the Secret Stash Mail Club!</h1>
             <p>Thank you for subscribing to our exclusive mail club, ${name || "friend"}!</p>
-            <p>You'll receive your first curated stationery package at the end of this month.</p>
+            <p>You'll receive your first curated stationery package shipped on the 20th of this month.</p>
             <p>Each month, you'll get a surprise envelope filled with exclusive stationery goodies delivered straight to your door.</p>
             <p style="color: #9d7cd8; font-weight: bold;">Your subscription: ${tierName}</p>
             <p>If you have any questions, just reply to this email.</p>
@@ -46,6 +46,59 @@ async function sendWelcomeEmail(to: string, name: string, tierName: string): Pro
     return true;
   } catch (error) {
     console.error("[Email] Error sending welcome email:", error);
+    return false;
+  }
+}
+
+async function notifyAdmins(subscriptionDetails: any): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.EMAIL_FROM || "onboarding@resend.dev";
+  const adminEmails = ["statshcreative@gmail.com", "sharyyoru@gmail.com"];
+
+  if (!apiKey) {
+    console.log("[Email] RESEND_API_KEY not configured, skipping admin notification");
+    return false;
+  }
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: adminEmails,
+        subject: `🎉 New Secret Stash Subscription: ${subscriptionDetails.tierName}`,
+        html: `
+          <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #4eb8d5;">New Secret Stash Subscription!</h1>
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h2 style="color: #333; margin-top: 0;">Subscription Details:</h2>
+              <p><strong>Customer:</strong> ${subscriptionDetails.userName || "N/A"} (${subscriptionDetails.userEmail})</p>
+              <p><strong>Plan:</strong> ${subscriptionDetails.tierName}</p>
+              <p><strong>Amount:</strong> AED ${subscriptionDetails.amount}/${subscriptionDetails.billingInterval}</p>
+              <p><strong>Subscription ID:</strong> ${subscriptionDetails.id}</p>
+              <p><strong>Customer ID:</strong> ${subscriptionDetails.stripeCustomerId}</p>
+              <p><strong>Started:</strong> ${new Date(subscriptionDetails.createdAt).toLocaleString()}</p>
+              <p><strong>Current Period:</strong> ${new Date(subscriptionDetails.currentPeriodStart).toLocaleDateString()} - ${new Date(subscriptionDetails.currentPeriodEnd).toLocaleDateString()}</p>
+            </div>
+            <p>Please prepare their package for shipment on the 20th of this month.</p>
+            <p>— Stash Admin System</p>
+          </div>
+        `,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("[Email] Failed to send admin notification:", await response.text());
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("[Email] Error sending admin notification:", error);
     return false;
   }
 }
@@ -161,6 +214,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   if (!metadata.tierName || metadata.tierName === "") {
     if (interval === "year" || (interval === "month" && intervalCount === 12)) {
       tierName = "Yearly Subscription";
+    } else if (interval === "month" && intervalCount === 6) {
+      tierName = "6 months Subscription";
     } else if (interval === "month" && intervalCount === 3) {
       tierName = "3 months Subscription";
     } else if (interval === "month" && intervalCount === 1) {
@@ -267,6 +322,25 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       console.error("[Stripe Webhook] Failed to send welcome email:", emailError);
     }
   }
+
+  // Notify admins
+  try {
+    await notifyAdmins({
+      id: subscriptionId,
+      stripeCustomerId: customerId,
+      userEmail,
+      userName,
+      tierName,
+      amount,
+      billingInterval: interval,
+      createdAt: new Date().toISOString(),
+      currentPeriodStart: new Date((subscription.current_period_start || 0) * 1000).toISOString(),
+      currentPeriodEnd: new Date((subscription.current_period_end || 0) * 1000).toISOString(),
+    });
+    console.log("[Stripe Webhook] Admin notification sent for new subscription");
+  } catch (emailError) {
+    console.error("[Stripe Webhook] Failed to send admin notification:", emailError);
+  }
 }
 
 async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
@@ -287,6 +361,8 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
   let tierName = "Monthly Subscription";
   if (interval === "year" || (interval === "month" && intervalCount === 12)) {
     tierName = "Yearly Subscription";
+  } else if (interval === "month" && intervalCount === 6) {
+    tierName = "6 months Subscription";
   } else if (interval === "month" && intervalCount === 3) {
     tierName = "3 months Subscription";
   } else if (interval === "month" && intervalCount === 1) {
@@ -342,6 +418,8 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   let tierName = "Monthly Subscription";
   if (interval === "year" || (interval === "month" && intervalCount === 12)) {
     tierName = "Yearly Subscription";
+  } else if (interval === "month" && intervalCount === 6) {
+    tierName = "6 months Subscription";
   } else if (interval === "month" && intervalCount === 3) {
     tierName = "3 months Subscription";
   } else if (interval === "month" && intervalCount === 1) {

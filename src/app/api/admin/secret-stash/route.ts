@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseAdmin } from "../../../../lib/supabase-admin";
+import { sendPackageSentEmail } from "../../../../lib/email-notifications";
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase());
 
@@ -91,11 +92,11 @@ export async function GET(req: NextRequest) {
     const profileMap = new Map((profiles || []).map((p) => [p.email, p]));
 
     // Get current month's delivery status for each subscription
-    const currentMonth = new Date().toISOString().slice(0, 7);
+    const deliveryMonth = new Date().toISOString().slice(0, 7);
     const { data: deliveries } = await supabaseAdmin
       .from("secret_stash_deliveries")
       .select("*")
-      .eq("month", currentMonth);
+      .eq("month", deliveryMonth);
 
     const deliveryMap = new Map((deliveries || []).map((d) => [d.subscription_id, d]));
 
@@ -122,6 +123,13 @@ export async function GET(req: NextRequest) {
       return sum + (sub.amount || 0);
     }, 0);
 
+    // Calculate renewals this month
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const renewalsThisMonth = activeSubscriptions.filter(sub => {
+      const renewalMonth = new Date(sub.current_period_end).toISOString().slice(0, 7);
+      return renewalMonth === currentMonth;
+    }).length;
+
     const stats = {
       total: subscriptions?.length || 0,
       active: activeSubscriptions.length,
@@ -133,6 +141,7 @@ export async function GET(req: NextRequest) {
       sentLetters: deliveries?.filter((d) => d.status === "sent" || d.status === "delivered").length || 0,
       monthlyRevenue,
       yearlyRevenue,
+      renewalsThisMonth,
     };
 
     return NextResponse.json({ subscriptions: enrichedSubscriptions, stats });
@@ -206,6 +215,31 @@ export async function POST(req: NextRequest) {
         });
 
         if (error) throw error;
+      }
+
+      // Send email notification to subscriber if marked as sent
+      if (status === "sent") {
+        try {
+          // Get subscription details for email
+          const { data: subscription } = await supabaseAdmin
+            .from("secret_stash_subscriptions")
+            .select("*")
+            .eq("id", subscriptionId)
+            .single();
+
+          if (subscription && subscription.user_email) {
+            const monthName = new Date(targetMonth + "-01").toLocaleDateString("en-US", { month: "long", year: "numeric" });
+            await sendPackageSentEmail(
+              subscription.user_email,
+              subscription.user_name || "friend",
+              trackingNumber,
+              monthName
+            );
+            console.log("[Admin] Package sent email sent to:", subscription.user_email);
+          }
+        } catch (emailError) {
+          console.error("[Admin] Failed to send package sent email:", emailError);
+        }
       }
 
       return NextResponse.json({ success: true });

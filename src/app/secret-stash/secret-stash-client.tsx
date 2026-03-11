@@ -11,7 +11,7 @@ type PricingTier = {
   id: string;
   name: string;
   price: number;
-  billingPeriod: "month" | "quarter" | "year";
+  billingPeriod: "month" | "quarter" | "half-year" | "year";
   stripePriceId: string;
   savings?: string;
   isPopular?: boolean;
@@ -54,12 +54,14 @@ type SecretStashClientProps = {
 const billingPeriodLabels: Record<string, string> = {
   month: "Monthly",
   quarter: "Quarterly",
+  "half-year": "6 Months",
   year: "Annual",
 };
 
 const billingPeriodDescriptions: Record<string, string> = {
   month: "per month",
   quarter: "every 3 months",
+  "half-year": "every 6 months",
   year: "per year",
 };
 
@@ -130,7 +132,7 @@ export default function SecretStashClient({
   // Default content if Sanity data not yet configured
   const defaultSubtitle = pageData?.subtitle || "SUBSCRIPTION";
   const defaultHeading = pageData?.heading || "Secret Stash Mail Club";
-  const defaultTaglineText = "Once a month, members receive a carefully curated envelope filled with exclusive stationery surprises.";
+  const defaultTaglineText = "Once a month, members receive a carefully curated envelope filled with exclusive stationery surprises. All packages are shipped on the 20th of each month.";
 
   return (
     <div className="bg-[#fdf8f3] min-h-screen">
