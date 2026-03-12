@@ -58,9 +58,8 @@ export async function createCheckoutSession(
     },
     allow_promotion_codes: true,
     billing_address_collection: "required",
-    shipping_address_collection: {
-      allowed_countries: ["AE", "SA", "KW", "QA", "BH", "OM"],
-    },
+    // No shipping address collection for international subscriptions
+    // Billing address is sufficient for subscription delivery
   };
 
   const session = await stripe.checkout.sessions.create(sessionConfig);
