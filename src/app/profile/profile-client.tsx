@@ -163,6 +163,16 @@ export default function ProfileClient({ name, email, image, orders = [], subscri
     event.preventDefault();
     setStatus("Saving...");
     
+    // Client-side validation
+    const requiredFields = ["line1", "city", "state", "postalCode", "country", "mobile"];
+    const missingFields = requiredFields.filter(field => !address[field as keyof Address] || String(address[field as keyof Address]).trim() === "");
+    
+    if (missingFields.length > 0) {
+      setStatus(`Please fill in: ${missingFields.join(", ")}`);
+      window.setTimeout(() => setStatus(""), 4000);
+      return;
+    }
+    
     try {
       // Save to database
       const response = await fetch("/api/profile/address", {
@@ -171,9 +181,10 @@ export default function ProfileClient({ name, email, image, orders = [], subscri
         body: JSON.stringify(address),
       });
 
+      const data = await response.json();
+      
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to save address");
+        throw new Error(data.error || "Failed to save address");
       }
 
       // Also save to local storage as backup
@@ -181,11 +192,12 @@ export default function ProfileClient({ name, email, image, orders = [], subscri
         window.localStorage.setItem(storageKey, JSON.stringify(address));
       }
 
-      setStatus("Saved");
-      window.setTimeout(() => setStatus(""), 2000);
-    } catch (error: any) {
-      setStatus(error.message || "Could not save address");
+      setStatus("✓ Address saved successfully!");
       window.setTimeout(() => setStatus(""), 3000);
+    } catch (error: any) {
+      console.error("Failed to save address:", error);
+      setStatus(`Error: ${error.message || "Could not save address"}`);
+      window.setTimeout(() => setStatus(""), 5000);
     }
   };
 
