@@ -3,6 +3,15 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseAdmin } from "../../../../lib/supabase-admin";
 
+// Helper to detect schema cache / missing table errors
+function isTableMissingError(error: any): boolean {
+  if (!error) return false;
+  const msg = error.message?.toLowerCase() || "";
+  return msg.includes("schema cache") || 
+         msg.includes("relation") && msg.includes("does not exist") ||
+         msg.includes("table") && msg.includes("does not exist");
+}
+
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
 
@@ -18,8 +27,20 @@ export async function GET(req: NextRequest) {
       .eq("email", session.user.email)
       .single();
 
-    if (error && error.code !== "PGRST116") { // PGRST116 is "not found"
-      throw error;
+    if (error) {
+      // Handle missing table gracefully - return empty address
+      if (isTableMissingError(error)) {
+        console.error("[Address GET] Profiles table not found - needs database setup");
+        return NextResponse.json({
+          address: null,
+          hasAddress: false,
+          warning: "Database setup required. Please contact support.",
+        });
+      }
+      // PGRST116 is "not found" - that's okay, just means no profile yet
+      if (error.code !== "PGRST116") {
+        throw error;
+      }
     }
 
     return NextResponse.json({
@@ -46,7 +67,6 @@ export async function POST(req: NextRequest) {
     const address = await req.json();
 
     console.log("[Address POST] Received address for:", session.user.email);
-    console.log("[Address POST] Address data:", JSON.stringify(address));
 
     // Validate required fields (dateOfBirth is optional)
     const requiredFields = ["line1", "city", "state", "postalCode", "country", "mobile"];
@@ -67,6 +87,15 @@ export async function POST(req: NextRequest) {
       .eq("email", session.user.email)
       .single();
 
+    // Handle missing table error
+    if (checkError && isTableMissingError(checkError)) {
+      console.error("[Address POST] Profiles table not found - database setup required");
+      return NextResponse.json(
+        { error: "Database setup required. Please run the profiles migration in Supabase. See supabase/migrations/003_profiles.sql" },
+        { status: 503 }
+      );
+    }
+
     console.log("[Address POST] Existing profile check:", existingProfile ? "Found" : "Not found", checkError?.code || "");
 
     if (existingProfile) {
@@ -82,10 +111,16 @@ export async function POST(req: NextRequest) {
         .select();
 
       if (updateError) {
+        if (isTableMissingError(updateError)) {
+          return NextResponse.json(
+            { error: "Database setup required. Please run the profiles migration in Supabase." },
+            { status: 503 }
+          );
+        }
         console.error("[Address POST] Update error:", updateError);
         throw updateError;
       }
-      console.log("[Address POST] Update successful:", updateData);
+      console.log("[Address POST] Update successful");
     } else {
       // Create new profile
       console.log("[Address POST] Creating new profile...");
@@ -101,10 +136,16 @@ export async function POST(req: NextRequest) {
         .select();
 
       if (insertError) {
+        if (isTableMissingError(insertError)) {
+          return NextResponse.json(
+            { error: "Database setup required. Please run the profiles migration in Supabase." },
+            { status: 503 }
+          );
+        }
         console.error("[Address POST] Insert error:", insertError);
         throw insertError;
       }
-      console.log("[Address POST] Insert successful:", insertData);
+      console.log("[Address POST] Insert successful");
     }
 
     console.log("[Address POST] Address saved successfully for:", session.user.email);
@@ -114,6 +155,15 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("[Address POST] Error:", error);
+    
+    // Check for table missing error in catch block
+    if (isTableMissingError(error)) {
+      return NextResponse.json(
+        { error: "Database setup required. Please run the profiles migration in Supabase." },
+        { status: 503 }
+      );
+    }
+    
     return NextResponse.json(
       { error: error.message || "Failed to save address. Please try again." },
       { status: 500 }

@@ -84,10 +84,18 @@ export async function GET(req: NextRequest) {
     // Get user profiles for delivery addresses
     const userEmails = [...new Set((subscriptions || []).map((s) => s.user_email).filter(Boolean))];
     
-    const { data: profiles } = await supabaseAdmin
+    const { data: profiles, error: profilesError } = await supabaseAdmin
       .from("profiles")
       .select("*")
       .in("email", userEmails);
+
+    // Handle missing profiles table gracefully
+    if (profilesError) {
+      const msg = profilesError.message?.toLowerCase() || "";
+      if (msg.includes("schema cache") || msg.includes("does not exist")) {
+        console.warn("[Admin Secret Stash] Profiles table not found - continuing without profile data");
+      }
+    }
 
     const profileMap = new Map((profiles || []).map((p) => [p.email, p]));
 

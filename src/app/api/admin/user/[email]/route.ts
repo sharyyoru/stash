@@ -10,6 +10,15 @@ function isAdmin(email?: string | null): boolean {
   return ADMIN_EMAILS.includes(email.toLowerCase());
 }
 
+// Helper to detect schema cache / missing table errors
+function isTableMissingError(error: any): boolean {
+  if (!error) return false;
+  const msg = error.message?.toLowerCase() || "";
+  return msg.includes("schema cache") || 
+         (msg.includes("relation") && msg.includes("does not exist")) ||
+         (msg.includes("table") && msg.includes("does not exist"));
+}
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ email: string }> }) {
   const session = await getServerSession(authOptions);
 
@@ -27,6 +36,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ emai
       .select("*")
       .eq("email", decodedEmail)
       .single();
+
+    // Handle missing table gracefully
+    if (profileError && isTableMissingError(profileError)) {
+      console.warn("[User Profile] Profiles table not found");
+      return NextResponse.json({
+        user: null,
+        warning: "Profiles table not set up",
+      });
+    }
 
     if (profileError && profileError.code !== "PGRST116") {
       throw profileError;

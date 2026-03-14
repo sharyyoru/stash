@@ -10,6 +10,15 @@ function isAdmin(email?: string | null): boolean {
   return ADMIN_EMAILS.includes(email.toLowerCase());
 }
 
+// Helper to detect schema cache / missing table errors
+function isTableMissingError(error: any): boolean {
+  if (!error) return false;
+  const msg = error.message?.toLowerCase() || "";
+  return msg.includes("schema cache") || 
+         (msg.includes("relation") && msg.includes("does not exist")) ||
+         (msg.includes("table") && msg.includes("does not exist"));
+}
+
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
 
@@ -41,7 +50,12 @@ export async function GET(req: NextRequest) {
 
     const { data: allProfiles, error: profilesError, count: profilesCount } = await query;
 
-    if (profilesError) throw profilesError;
+    // Handle missing profiles table - continue with empty profiles
+    if (profilesError && isTableMissingError(profilesError)) {
+      console.warn("[CRM] Profiles table not found - continuing with orders/subscriptions only");
+    } else if (profilesError) {
+      throw profilesError;
+    }
 
     console.log("[CRM Debug] Total profiles found:", allProfiles?.length || 0);
     console.log("[CRM Debug] Sample profiles:", allProfiles?.slice(0, 3));

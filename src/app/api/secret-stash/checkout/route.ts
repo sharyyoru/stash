@@ -19,28 +19,34 @@ export async function POST(req: NextRequest) {
   const { priceId, tierId, tierName } = body;
 
   // Validate that user has a delivery address
-  const { data: profile } = await supabaseAdmin
+  const { data: profile, error: profileError } = await supabaseAdmin
     .from("profiles")
     .select("address")
     .eq("email", session.user.email)
     .single();
 
-  if (!profile?.address) {
+  // Handle missing profiles table - allow checkout without address validation
+  const isTableMissing = profileError?.message?.toLowerCase().includes("schema cache") ||
+    profileError?.message?.toLowerCase().includes("does not exist");
+  
+  if (isTableMissing) {
+    console.warn("[Checkout] Profiles table not found - skipping address validation");
+  } else if (!profile?.address) {
     return NextResponse.json({ 
       error: "Delivery address required. Please complete your profile address before subscribing.",
       code: "ADDRESS_REQUIRED"
     }, { status: 400 });
-  }
-
-  // Validate required address fields
-  const requiredFields = ["line1", "city", "state", "postalCode", "country", "mobile", "dateOfBirth"];
-  const missingFields = requiredFields.filter(field => !profile.address[field]);
-  
-  if (missingFields.length > 0) {
-    return NextResponse.json({ 
-      error: `Please complete your address details. Missing: ${missingFields.join(", ")}`,
-      code: "INCOMPLETE_ADDRESS"
-    }, { status: 400 });
+  } else {
+    // Validate required address fields (dateOfBirth is optional)
+    const requiredFields = ["line1", "city", "state", "postalCode", "country", "mobile"];
+    const missingFields = requiredFields.filter(field => !profile.address[field]);
+    
+    if (missingFields.length > 0) {
+      return NextResponse.json({ 
+        error: `Please complete your address details. Missing: ${missingFields.join(", ")}`,
+        code: "INCOMPLETE_ADDRESS"
+      }, { status: 400 });
+    }
   }
 
   try {
