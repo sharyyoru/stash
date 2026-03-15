@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -13,6 +13,12 @@ type Part = {
   source: string;
 };
 
+type Instruction = {
+  step: number;
+  text: string;
+  image_url?: string;
+};
+
 type MOC = {
   id: string;
   slug: string;
@@ -20,8 +26,10 @@ type MOC = {
   description: string;
   design_features: string[];
   parts_list: Part[];
-  instructions: string[];
-  image_url: string;
+  instructions: Instruction[];
+  images: string[];
+  videos: string[];
+  cover_image: string;
   status: "draft" | "published";
   created_at: string;
   updated_at: string;
@@ -33,7 +41,9 @@ const emptyMoc: Omit<MOC, "id" | "slug" | "created_at" | "updated_at"> = {
   design_features: [],
   parts_list: [],
   instructions: [],
-  image_url: "",
+  images: [],
+  videos: [],
+  cover_image: "",
   status: "draft",
 };
 
@@ -42,6 +52,12 @@ const emptyPart: Part = {
   name: "",
   color: "",
   source: "",
+};
+
+const emptyInstruction: Instruction = {
+  step: 1,
+  text: "",
+  image_url: "",
 };
 
 export default function EditBuildPage() {
@@ -209,16 +225,17 @@ export default function EditBuildPage() {
   }
 
   function addInstruction() {
+    const newStep = (currentMoc.instructions?.length || 0) + 1;
     setCurrentMoc(prev => ({
       ...prev,
-      instructions: [...(prev.instructions || []), ""],
+      instructions: [...(prev.instructions || []), { step: newStep, text: "", image_url: "" }],
     }));
   }
 
-  function updateInstruction(index: number, value: string) {
+  function updateInstruction(index: number, field: keyof Instruction, value: string | number) {
     setCurrentMoc(prev => {
-      const instructions = [...(prev.instructions || [])];
-      instructions[index] = value;
+      const instructions = [...(prev.instructions || [])] as Instruction[];
+      instructions[index] = { ...instructions[index], [field]: value };
       return { ...prev, instructions };
     });
   }
@@ -226,8 +243,89 @@ export default function EditBuildPage() {
   function removeInstruction(index: number) {
     setCurrentMoc(prev => ({
       ...prev,
-      instructions: (prev.instructions || []).filter((_, i) => i !== index),
+      instructions: ((prev.instructions || []) as Instruction[]).filter((_, i) => i !== index),
     }));
+  }
+
+  // Image upload handler
+  async function handleImageUpload(file: File, type: "cover" | "gallery" | "instruction", instructionIndex?: number) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("mocSlug", currentMoc.title?.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "temp");
+    formData.append("type", "image");
+
+    try {
+      const res = await fetch("/api/build/upload", {
+        method: "POST",
+        body: formData,
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        setMessage({ type: "error", text: data.error || "Upload failed" });
+        return;
+      }
+
+      if (type === "cover") {
+        setCurrentMoc(prev => ({ ...prev, cover_image: data.url }));
+      } else if (type === "gallery") {
+        setCurrentMoc(prev => ({ ...prev, images: [...(prev.images || []), data.url] }));
+      } else if (type === "instruction" && instructionIndex !== undefined) {
+        updateInstruction(instructionIndex, "image_url", data.url);
+      }
+      
+      setMessage({ type: "success", text: "Image uploaded successfully" });
+      setTimeout(() => setMessage(null), 2000);
+    } catch (err) {
+      setMessage({ type: "error", text: "Upload failed" });
+    }
+  }
+
+  // Video upload handler
+  async function handleVideoUpload(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("mocSlug", currentMoc.title?.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "temp");
+    formData.append("type", "video");
+
+    try {
+      const res = await fetch("/api/build/upload", {
+        method: "POST",
+        body: formData,
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        setMessage({ type: "error", text: data.error || "Upload failed" });
+        return;
+      }
+
+      setCurrentMoc(prev => ({ ...prev, videos: [...(prev.videos || []), data.url] }));
+      setMessage({ type: "success", text: "Video uploaded successfully" });
+      setTimeout(() => setMessage(null), 2000);
+    } catch (err) {
+      setMessage({ type: "error", text: "Upload failed" });
+    }
+  }
+
+  function removeImage(index: number) {
+    setCurrentMoc(prev => ({
+      ...prev,
+      images: (prev.images || []).filter((_, i) => i !== index),
+    }));
+  }
+
+  function removeVideo(index: number) {
+    setCurrentMoc(prev => ({
+      ...prev,
+      videos: (prev.videos || []).filter((_, i) => i !== index),
+    }));
+  }
+
+  function setCoverImage(url: string) {
+    setCurrentMoc(prev => ({ ...prev, cover_image: url }));
   }
 
   if (status === "loading" || loading) {
@@ -322,9 +420,9 @@ export default function EditBuildPage() {
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-3">
                             <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg bg-neutral-100">
-                              {moc.image_url ? (
+                              {(moc.cover_image || moc.images?.[0]) ? (
                                 <Image
-                                  src={moc.image_url}
+                                  src={moc.cover_image || moc.images[0]}
                                   alt={moc.title}
                                   width={48}
                                   height={48}
@@ -456,17 +554,114 @@ export default function EditBuildPage() {
                 />
               </div>
 
+              {/* Cover Image */}
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  Image URL
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  Cover Image
                 </label>
-                <input
-                  type="text"
-                  value={currentMoc.image_url || ""}
-                  onChange={(e) => setCurrentMoc(prev => ({ ...prev, image_url: e.target.value }))}
-                  className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-neutral-900 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                  placeholder="https://example.com/image.jpg"
-                />
+                <div className="flex items-start gap-4">
+                  {currentMoc.cover_image ? (
+                    <div className="relative h-24 w-24 overflow-hidden rounded-lg">
+                      <Image src={currentMoc.cover_image} alt="Cover" fill className="object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setCurrentMoc(prev => ({ ...prev, cover_image: "" }))}
+                        className="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white shadow"
+                      >
+                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex h-24 w-24 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-neutral-300 bg-neutral-50 hover:border-amber-400 hover:bg-amber-50">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], "cover")}
+                      />
+                      <svg className="h-8 w-8 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                    </label>
+                  )}
+                  <div className="text-sm text-neutral-500">
+                    <p>Upload a cover image for this MOC.</p>
+                    <p className="mt-1">Recommended: Square image, min 500x500px</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Gallery Images */}
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  Gallery Images
+                </label>
+                <div className="flex flex-wrap gap-3">
+                  {(currentMoc.images || []).map((img, idx) => (
+                    <div key={idx} className="relative h-20 w-20 overflow-hidden rounded-lg">
+                      <Image src={img} alt={`Gallery ${idx + 1}`} fill className="object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(idx)}
+                        className="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white shadow"
+                      >
+                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                      {!currentMoc.cover_image && idx === 0 && (
+                        <span className="absolute bottom-0 left-0 right-0 bg-amber-500 py-0.5 text-center text-xs text-white">Cover</span>
+                      )}
+                    </div>
+                  ))}
+                  <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-neutral-300 bg-neutral-50 hover:border-amber-400 hover:bg-amber-50">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], "gallery")}
+                    />
+                    <svg className="h-6 w-6 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </label>
+                </div>
+              </div>
+
+              {/* Videos */}
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-2">
+                  Videos
+                </label>
+                <div className="space-y-3">
+                  {(currentMoc.videos || []).map((video, idx) => (
+                    <div key={idx} className="flex items-center gap-3">
+                      <video src={video} className="h-16 w-28 rounded-lg object-cover" />
+                      <span className="flex-1 truncate text-sm text-neutral-600">{video.split('/').pop()}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeVideo(idx)}
+                        className="rounded-lg bg-red-50 px-3 py-1 text-sm text-red-600 hover:bg-red-100"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <label className="flex cursor-pointer items-center gap-2 rounded-lg border-2 border-dashed border-neutral-300 p-4 hover:border-amber-400 hover:bg-amber-50">
+                    <input
+                      type="file"
+                      accept="video/*"
+                      className="hidden"
+                      onChange={(e) => e.target.files?.[0] && handleVideoUpload(e.target.files[0])}
+                    />
+                    <svg className="h-5 w-5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-sm text-neutral-600">Upload video</span>
+                  </label>
+                </div>
               </div>
 
               {/* Design Features */}
@@ -576,28 +771,66 @@ export default function EditBuildPage() {
                     + Add Step
                   </button>
                 </div>
-                <div className="space-y-2">
-                  {(currentMoc.instructions || []).map((step, idx) => (
-                    <div key={idx} className="flex gap-2">
-                      <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 text-sm font-medium text-amber-800">
-                        {idx + 1}
-                      </span>
-                      <textarea
-                        value={step}
-                        onChange={(e) => updateInstruction(idx, e.target.value)}
-                        rows={2}
-                        className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-neutral-900 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-                        placeholder="Describe this step..."
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeInstruction(idx)}
-                        className="rounded-lg bg-red-50 px-3 py-2 text-red-600 hover:bg-red-100 self-start"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                <div className="space-y-4">
+                  {(currentMoc.instructions || []).map((instruction, idx) => {
+                    const inst = instruction as Instruction;
+                    return (
+                      <div key={idx} className="rounded-lg border border-neutral-200 bg-neutral-50 p-4">
+                        <div className="flex items-start gap-3">
+                          <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-amber-500 text-sm font-bold text-white">
+                            {idx + 1}
+                          </span>
+                          <div className="flex-1 space-y-3">
+                            <textarea
+                              value={inst.text || ""}
+                              onChange={(e) => updateInstruction(idx, "text", e.target.value)}
+                              rows={2}
+                              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-neutral-900 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                              placeholder="Describe this step..."
+                            />
+                            <div className="flex items-center gap-3">
+                              {inst.image_url ? (
+                                <div className="relative h-16 w-24 overflow-hidden rounded-lg">
+                                  <Image src={inst.image_url} alt={`Step ${idx + 1}`} fill className="object-cover" />
+                                  <button
+                                    type="button"
+                                    onClick={() => updateInstruction(idx, "image_url", "")}
+                                    className="absolute -right-1 -top-1 rounded-full bg-red-500 p-0.5 text-white"
+                                  >
+                                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              ) : (
+                                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-neutral-300 px-3 py-2 text-sm text-neutral-500 hover:border-amber-400 hover:bg-amber-50">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], "instruction", idx)}
+                                  />
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  </svg>
+                                  Add image
+                                </label>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeInstruction(idx)}
+                            className="rounded-lg bg-red-50 p-2 text-red-600 hover:bg-red-100"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 

@@ -9,8 +9,10 @@ CREATE TABLE IF NOT EXISTS mocs (
   description TEXT,
   design_features TEXT[] DEFAULT '{}',
   parts_list JSONB DEFAULT '[]',
-  instructions TEXT[] DEFAULT '{}',
-  image_url TEXT,
+  instructions JSONB DEFAULT '[]',
+  images JSONB DEFAULT '[]',
+  videos JSONB DEFAULT '[]',
+  cover_image TEXT,
   status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

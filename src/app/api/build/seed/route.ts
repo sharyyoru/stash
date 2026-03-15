@@ -10,15 +10,17 @@ function isAdmin(email?: string | null): boolean {
   return ADMIN_EMAILS.includes(email.toLowerCase());
 }
 
-// Master Lloyd MOC data
+// Master Lloyd MOC data - images will be uploaded separately
 const masterLloydMoc = {
   slug: "master-lloyd-santoryu-style",
   title: "Master Lloyd (Santoryu Style)",
-  description: "A Ninjago x One Piece crossover MOC. Lloyd Garmadon reimagined as Roronoa Zoro, wielding three katanas using the Santoryu style.",
+  description: "A Ninjago x One Piece crossover MOC. Lloyd Garmadon reimagined as Roronoa Zoro, wielding three katanas using the Santoryu style. This unique fusion combines the ninja aesthetic of Ninjago with the iconic Santoryu (Three Sword Style) fighting technique from One Piece.",
   design_features: [
     "Santoryu Stance with mouth-blade",
     "Island Base with palm tree",
-    "Fusion Aesthetic"
+    "Fusion Aesthetic",
+    "Custom weapon configuration",
+    "Tropical scenery display"
   ],
   parts_list: [
     { part_id: "973", name: "Torso", color: "Green", source: "Ninjago Set" },
@@ -35,12 +37,14 @@ const masterLloydMoc = {
     { part_id: "28573", name: "Plant Leaves & Flowers", color: "Green/Orange", source: "Pick-a-Brick" }
   ],
   instructions: [
-    "Minifigure: Place a 1x1 neck bracket over the neck stud, attach the head, clip the white katana into the bracket, and fit the hairpiece over it.",
-    "Weapons: Equip the Golden Scimitar in the right hand and the Dragon Hilt Katana in the left.",
-    "Base: Build a 6x6 tan wedge foundation with a central 2x4 gray plate for elevation.",
-    "Scenery: Construct the palm tree using brown 1x1 rounds and add orange flowers and green leaves for tropical detail."
+    { step: 1, text: "Minifigure: Place a 1x1 neck bracket over the neck stud, attach the head, clip the white katana into the bracket, and fit the hairpiece over it." },
+    { step: 2, text: "Weapons: Equip the Golden Scimitar in the right hand and the Dragon Hilt Katana in the left." },
+    { step: 3, text: "Base: Build a 6x6 tan wedge foundation with a central 2x4 gray plate for elevation." },
+    { step: 4, text: "Scenery: Construct the palm tree using brown 1x1 rounds and add orange flowers and green leaves for tropical detail." }
   ],
-  image_url: "",
+  images: [] as string[],
+  videos: [] as string[],
+  cover_image: "",
   status: "published" as const,
 };
 

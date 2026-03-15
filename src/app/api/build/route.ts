@@ -19,6 +19,12 @@ function isTableMissingError(error: any): boolean {
          (msg.includes("table") && msg.includes("does not exist"));
 }
 
+export type MOCInstruction = {
+  step: number;
+  text: string;
+  image_url?: string;
+};
+
 export type MOC = {
   id: string;
   slug: string;
@@ -26,8 +32,10 @@ export type MOC = {
   description: string;
   design_features: string[];
   parts_list: { part_id: string; name: string; color: string; source: string }[];
-  instructions: string[];
-  image_url: string;
+  instructions: MOCInstruction[];
+  images: string[];
+  videos: string[];
+  cover_image: string;
   status: "draft" | "published";
   created_at: string;
   updated_at: string;
@@ -112,7 +120,7 @@ export async function POST(req: NextRequest) {
     }
     
     const body = await req.json();
-    const { title, description, design_features, parts_list, instructions, image_url, status } = body;
+    const { title, description, design_features, parts_list, instructions, images, videos, cover_image, status } = body;
     
     if (!title) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -133,7 +141,9 @@ export async function POST(req: NextRequest) {
         design_features: design_features || [],
         parts_list: parts_list || [],
         instructions: instructions || [],
-        image_url: image_url || "",
+        images: images || [],
+        videos: videos || [],
+        cover_image: cover_image || "",
         status: status || "draft",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -189,7 +199,9 @@ export async function PUT(req: NextRequest) {
     if (design_features !== undefined) updateData.design_features = design_features;
     if (parts_list !== undefined) updateData.parts_list = parts_list;
     if (instructions !== undefined) updateData.instructions = instructions;
-    if (image_url !== undefined) updateData.image_url = image_url;
+    if (body.images !== undefined) updateData.images = body.images;
+    if (body.videos !== undefined) updateData.videos = body.videos;
+    if (body.cover_image !== undefined) updateData.cover_image = body.cover_image;
     if (status !== undefined) updateData.status = status;
     
     const { data, error } = await supabaseAdmin
