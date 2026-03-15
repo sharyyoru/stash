@@ -150,6 +150,9 @@ function SiteHeader({ searchSuggestions, session, siteSettings }: SiteHeaderProp
             <Link href="/secret-stash" className="stash-rainbow-text font-bold transition-opacity hover:opacity-80">
               Secret Stash
             </Link>
+            <Link href="/build" className="text-amber-600 font-bold transition-opacity hover:opacity-80">
+              Build
+            </Link>
           </nav>
         </div>
         <div className="flex items-center gap-2">
@@ -229,6 +232,11 @@ function SiteFooter({ siteSettings }: SiteFooterProps) {
               <li>
                 <Link href="/secret-stash" className="stash-rainbow-text font-bold">
                   Secret Stash ✨
+                </Link>
+              </li>
+              <li>
+                <Link href="/build" className="text-amber-600 font-bold transition-colors hover:text-amber-700">
+                  Build 🧱
                 </Link>
               </li>
             </ul>

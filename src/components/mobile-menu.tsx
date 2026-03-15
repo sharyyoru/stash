@@ -128,6 +128,18 @@ export default function MobileMenu() {
               >
                 ✨ Secret Stash
               </Link>
+              {/* Build - MOC Gallery */}
+              <Link
+                href="/build"
+                onClick={() => setIsOpen(false)}
+                className={`block px-4 py-3 rounded-2xl text-sm font-bold transition-opacity ${
+                  pathname === "/build" || pathname.startsWith("/build/")
+                    ? "bg-amber-100 text-amber-700"
+                    : "text-amber-600 hover:bg-neutral-50 active:bg-neutral-100"
+                }`}
+              >
+                🧱 Build
+              </Link>
             </nav>
             
             {/* Safe area padding for devices with notch */}
