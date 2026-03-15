@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { PortableText } from "@portabletext/react";
+import { SubscriptionSchema } from "../../components/json-ld-schema";
 
 type PricingTier = {
   _key: string;
@@ -64,6 +65,19 @@ const billingPeriodDescriptions: Record<string, string> = {
   "half-year": "every 6 months",
   year: "per year",
 };
+
+const billingPeriodMonths: Record<string, number> = {
+  month: 1,
+  quarter: 3,
+  "half-year": 6,
+  year: 12,
+};
+
+// Calculate monthly equivalent price for display
+function getMonthlyPrice(price: number, period: string): number {
+  const months = billingPeriodMonths[period] || 1;
+  return price / months;
+}
 
 export default function SecretStashClient({
   pageData,
@@ -134,8 +148,27 @@ export default function SecretStashClient({
   const defaultHeading = pageData?.heading || "Secret Stash Mail Club";
   const defaultTaglineText = "Once a month, members receive a carefully curated envelope filled with exclusive stationery surprises. All packages are shipped on the 20th of each month.";
 
+  // Get the first gallery image for schema
+  const schemaImageUrl = gallery.length > 0 ? gallery[0].url : undefined;
+  const schemaBenefits = benefits.map((b) => `${b.title}: ${b.description}`);
+
   return (
     <div className="bg-[#fdf8f3] min-h-screen">
+      {/* JSON-LD Schema for Subscription SEO */}
+      {selectedTier && (
+        <SubscriptionSchema
+          subscription={{
+            name: `Secret Stash Mail Club - ${selectedTier.name}`,
+            description: "Premium monthly stationery subscription box with exclusive art prints, original stories, and curated surprises delivered to your door.",
+            price: selectedTier.price,
+            currency: currency,
+            billingPeriod: selectedTier.billingPeriod,
+            imageUrl: schemaImageUrl,
+            benefits: schemaBenefits,
+          }}
+        />
+      )}
+
       <div className="mx-auto max-w-6xl px-4 py-10">
         <div className="grid gap-10 lg:grid-cols-2">
           {/* Left Column - Gallery (Sticky on Desktop) */}
@@ -214,57 +247,114 @@ export default function SecretStashClient({
               </div>
             )}
 
-            {/* Pricing Tiers */}
+            {/* Pricing Tiers - Enhanced UI */}
             {pricingTiers.length > 0 && (
-              <div className="space-y-3">
-                <p className="text-xs font-medium uppercase tracking-[0.15em] text-neutral-500">
-                  Choose your plan
-                </p>
-                <div className="space-y-2">
-                  {pricingTiers.map((tier) => (
-                    <button
-                      key={tier._key}
-                      type="button"
-                      onClick={() => setSelectedTier(tier)}
-                      className={`flex w-full items-center justify-between rounded-2xl border-2 px-4 py-3 text-left transition-all ${
-                        selectedTier?._key === tier._key
-                          ? "border-[#4eb8d5] bg-[#4eb8d5]/5"
-                          : "border-neutral-200 bg-white hover:border-neutral-300"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${
-                            selectedTier?._key === tier._key
-                              ? "border-[#4eb8d5]"
-                              : "border-neutral-300"
-                          }`}
-                        >
-                          {selectedTier?._key === tier._key && (
-                            <div className="h-2.5 w-2.5 rounded-full bg-[#4eb8d5]" />
-                          )}
-                        </div>
-                        <div>
-                          <span className="font-medium text-neutral-900">{tier.name}</span>
-                          {tier.isPopular && (
-                            <span className="ml-2 rounded-full bg-[#4eb8d5] px-2 py-0.5 text-[10px] font-semibold text-white">
-                              POPULAR
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-semibold text-neutral-900">
-                          {currency} {tier.price.toFixed(2)}
-                        </span>
-                        {tier.savings && (
-                          <span className="ml-2 text-xs font-medium text-emerald-600">
-                            {tier.savings}
-                          </span>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium uppercase tracking-[0.15em] text-neutral-500">
+                    Choose your plan
+                  </p>
+                  <div className="flex items-center gap-1 text-xs text-emerald-600">
+                    <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span>Cancel anytime</span>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {pricingTiers.map((tier) => {
+                    const monthlyPrice = getMonthlyPrice(tier.price, tier.billingPeriod);
+                    const isSelected = selectedTier?._key === tier._key;
+                    const months = billingPeriodMonths[tier.billingPeriod] || 1;
+                    
+                    return (
+                      <button
+                        key={tier._key}
+                        type="button"
+                        onClick={() => setSelectedTier(tier)}
+                        className={`relative flex flex-col rounded-2xl border-2 p-4 text-left transition-all ${
+                          isSelected
+                            ? "border-[#4eb8d5] bg-gradient-to-br from-[#4eb8d5]/5 to-[#9d7cd8]/5 shadow-lg shadow-[#4eb8d5]/10"
+                            : "border-neutral-200 bg-white hover:border-[#4eb8d5]/50 hover:shadow-md"
+                        }`}
+                      >
+                        {/* Popular Badge */}
+                        {tier.isPopular && (
+                          <div className="absolute -top-2.5 left-4 rounded-full bg-gradient-to-r from-[#4eb8d5] to-[#9d7cd8] px-3 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                            MOST POPULAR
+                          </div>
                         )}
-                      </div>
-                    </button>
-                  ))}
+                        
+                        {/* Savings Badge */}
+                        {tier.savings && (
+                          <div className="absolute -top-2.5 right-4 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                            {tier.savings}
+                          </div>
+                        )}
+                        
+                        <div className="flex items-start justify-between pt-1">
+                          <div>
+                            <span className="font-semibold text-neutral-900">{tier.name}</span>
+                            <p className="mt-0.5 text-xs text-neutral-500">
+                              {billingPeriodDescriptions[tier.billingPeriod]}
+                            </p>
+                          </div>
+                          <div
+                            className={`h-5 w-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                              isSelected ? "border-[#4eb8d5] bg-[#4eb8d5]" : "border-neutral-300"
+                            }`}
+                          >
+                            {isSelected && (
+                              <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="mt-3 border-t border-neutral-100 pt-3">
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-bold text-[#4eb8d5]">
+                              {currency} {tier.price.toFixed(0)}
+                            </span>
+                            {months > 1 && (
+                              <span className="text-xs text-neutral-400">
+                                ({currency} {monthlyPrice.toFixed(0)}/mo)
+                              </span>
+                            )}
+                          </div>
+                          {months > 1 && (
+                            <p className="mt-1 text-xs text-neutral-500">
+                              Billed as one payment for {months} months
+                            </p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                {/* Trust Badges */}
+                <div className="flex flex-wrap items-center justify-center gap-4 pt-2 text-xs text-neutral-500">
+                  <div className="flex items-center gap-1">
+                    <svg className="h-4 w-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span>Secure checkout</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <svg className="h-4 w-4 text-[#4eb8d5]" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                      <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                    </svg>
+                    <span>Ships on the 20th</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <svg className="h-4 w-4 text-[#9d7cd8]" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                    </svg>
+                    <span>Curated with love</span>
+                  </div>
                 </div>
               </div>
             )}

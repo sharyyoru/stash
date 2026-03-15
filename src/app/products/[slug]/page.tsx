@@ -10,6 +10,8 @@ import ProductSliderSection from "../../../components/product-section-slider";
 import FrequentlyBoughtTogetherCard, {
   FrequentlyBoughtProduct,
 } from "../../../components/frequently-bought-together-card";
+import { ProductSchema, BreadcrumbSchema } from "../../../components/json-ld-schema";
+import SocialProof from "../../../components/social-proof";
 
 const MAIL_CLUB_SLUG = "the-secret-stash-mail-club";
 
@@ -118,9 +120,38 @@ export default async function ProductPage({ params }: ProductPageProps) {
     })),
   ];
 
+  // Build breadcrumb items for schema
+  const breadcrumbItems = [
+    { name: "Home", url: "/" },
+    ...(product.category ? [{ name: product.category, url: `/category/${product.categorySlug}` }] : []),
+    { name: product.title, url: `/products/${product.slug}` },
+  ];
+
   return (
     <div className="bg-neutral-50">
+      {/* JSON-LD Schema for SEO */}
+      <ProductSchema
+        product={{
+          id: product._id,
+          name: product.title,
+          description: product.shortDescription || descriptionParagraphs[0],
+          slug: product.slug,
+          price: product.price || 0,
+          currency: product.currency || "AED",
+          imageUrl: mainImageUrl,
+          category: product.category,
+          brand: "Stash",
+          availability: "InStock",
+        }}
+      />
+      <BreadcrumbSchema items={breadcrumbItems} />
+
       <div className="mx-auto max-w-6xl px-4 py-10 space-y-10">
+        {/* Social Proof - View Count */}
+        <div className="flex justify-end">
+          <SocialProof productSlug={product.slug} productTitle={product.title} />
+        </div>
+
         <ProductTopSection
           id={product._id}
           title={product.title}

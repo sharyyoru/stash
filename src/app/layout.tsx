@@ -13,6 +13,8 @@ import CartButton from "../components/cart-button";
 import AuthSessionProvider from "../components/auth-session-provider";
 import TrackOrderButton from "../components/track-order-button";
 import MobileMenu from "../components/mobile-menu";
+import ExitIntentPopup from "../components/exit-intent-popup";
+import { OrganizationSchema, WebsiteSchema, LocalBusinessSchema } from "../components/json-ld-schema";
 import { authOptions } from "./api/auth/[...nextauth]/route";
 import "./globals.css";
 
@@ -63,11 +65,24 @@ export default async function RootLayout({
       >
         <AuthSessionProvider>
           <CartProvider>
+            {/* Global JSON-LD Schemas for SEO */}
+            <OrganizationSchema
+              name="Stash"
+              url="https://www.s-tash.store"
+              description="Stash is a curated shop for stationery and stickers in UAE."
+              socialLinks={siteSettings?.socialLinks}
+            />
+            <WebsiteSchema />
+            <LocalBusinessSchema />
+            
             <div className="min-h-screen flex flex-col">
               <SiteHeader searchSuggestions={searchSuggestions} session={session} siteSettings={siteSettings} />
               <main className="flex-1">{children}</main>
               <SiteFooter siteSettings={siteSettings} />
             </div>
+            
+            {/* Exit Intent Popup for Lead Capture */}
+            <ExitIntentPopup />
           </CartProvider>
         </AuthSessionProvider>
       </body>
