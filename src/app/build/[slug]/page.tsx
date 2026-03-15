@@ -12,6 +12,28 @@ type Part = {
   source: string;
 };
 
+// New Rebrickable-style parts list
+type RebrickablePart = {
+  partNum: string;
+  name: string;
+  colorId: number;
+  colorName: string;
+  colorRgb: string;
+  quantity: number;
+  imageUrl: string | null;
+  elementIds: string[];
+  isSpare: boolean;
+};
+
+type MocPartsList = {
+  parts: RebrickablePart[];
+  totalParts: number;
+  uniqueParts: number;
+  lastUpdated: string;
+  source: string;
+  rebrickableMocId?: string;
+};
+
 type Instruction = {
   step: number;
   text: string;
@@ -24,7 +46,7 @@ type MOC = {
   title: string;
   description: string;
   design_features: string[];
-  parts_list: Part[];
+  parts_list: Part[] | MocPartsList;
   instructions: Instruction[];
   images: string[];
   videos: string[];
@@ -32,6 +54,35 @@ type MOC = {
   status: string;
   created_at: string;
 };
+
+// Helper to check if parts_list is the new format
+function isRebrickablePartsList(partsList: any): partsList is MocPartsList {
+  return partsList && typeof partsList === 'object' && 'parts' in partsList && Array.isArray(partsList.parts);
+}
+
+// Helper to get parts array from either format
+function getPartsArray(partsList: Part[] | MocPartsList | null | undefined): (Part | RebrickablePart)[] {
+  if (!partsList) return [];
+  if (isRebrickablePartsList(partsList)) return partsList.parts;
+  if (Array.isArray(partsList)) return partsList;
+  return [];
+}
+
+// Helper to get total parts count
+function getPartsCount(partsList: Part[] | MocPartsList | null | undefined): number {
+  if (!partsList) return 0;
+  if (isRebrickablePartsList(partsList)) return partsList.totalParts || partsList.parts.length;
+  if (Array.isArray(partsList)) return partsList.length;
+  return 0;
+}
+
+// Helper to get unique parts count
+function getUniquePartsCount(partsList: Part[] | MocPartsList | null | undefined): number {
+  if (!partsList) return 0;
+  if (isRebrickablePartsList(partsList)) return partsList.uniqueParts || partsList.parts.length;
+  if (Array.isArray(partsList)) return partsList.length;
+  return 0;
+}
 
 export default function MOCDetailPage() {
   const params = useParams();
@@ -133,7 +184,11 @@ export default function MOCDetailPage() {
       }
       
       // Parts List
-      if (moc.parts_list && moc.parts_list.length > 0) {
+      const partsArray = isRebrickablePartsList(moc.parts_list) 
+        ? moc.parts_list.parts 
+        : (Array.isArray(moc.parts_list) ? moc.parts_list : []);
+      
+      if (partsArray.length > 0) {
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
         doc.text("Parts List", margin, yPos);
@@ -142,10 +197,10 @@ export default function MOCDetailPage() {
         // Table header
         doc.setFontSize(9);
         doc.setFont("helvetica", "bold");
-        doc.text("Part ID", margin, yPos);
-        doc.text("Name", margin + 25, yPos);
-        doc.text("Color", margin + 90, yPos);
-        doc.text("Source", margin + 120, yPos);
+        doc.text("Part #", margin, yPos);
+        doc.text("Name", margin + 30, yPos);
+        doc.text("Color", margin + 100, yPos);
+        doc.text("Qty", margin + 145, yPos);
         yPos += 6;
         
         // Draw line
@@ -155,15 +210,20 @@ export default function MOCDetailPage() {
         
         // Table rows
         doc.setFont("helvetica", "normal");
-        moc.parts_list.forEach((part) => {
+        partsArray.forEach((part: any) => {
           if (yPos > 270) {
             doc.addPage();
             yPos = 20;
           }
-          doc.text(part.part_id || "-", margin, yPos);
-          doc.text((part.name || "-").substring(0, 30), margin + 25, yPos);
-          doc.text(part.color || "-", margin + 90, yPos);
-          doc.text(part.source || "-", margin + 120, yPos);
+          const partNum = part.partNum || part.part_id || "-";
+          const partName = (part.name || "-").substring(0, 35);
+          const partColor = part.colorName || part.color || "-";
+          const partQty = part.quantity ? `x${part.quantity}` : "-";
+          
+          doc.text(partNum, margin, yPos);
+          doc.text(partName, margin + 30, yPos);
+          doc.text(partColor, margin + 100, yPos);
+          doc.text(partQty, margin + 145, yPos);
           yPos += 6;
         });
         yPos += 10;
@@ -385,12 +445,12 @@ export default function MOCDetailPage() {
 
             {/* Stats */}
             <div className="mt-6 flex flex-wrap gap-4">
-              {moc.parts_list && moc.parts_list.length > 0 && (
+              {getPartsCount(moc.parts_list) > 0 && (
                 <div className="flex items-center gap-2 rounded-lg bg-amber-50 px-4 py-2">
                   <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                   </svg>
-                  <span className="font-medium text-amber-800">{moc.parts_list.length} Parts</span>
+                  <span className="font-medium text-amber-800">{getPartsCount(moc.parts_list)} Parts ({getUniquePartsCount(moc.parts_list)} unique)</span>
                 </div>
               )}
               {moc.instructions && moc.instructions.length > 0 && (
@@ -499,7 +559,7 @@ export default function MOCDetailPage() {
                   : "text-neutral-500 hover:text-neutral-700"
               }`}
             >
-              Parts List ({moc.parts_list?.length || 0})
+              Parts List ({getUniquePartsCount(moc.parts_list)})
             </button>
           </div>
         </div>
@@ -545,53 +605,98 @@ export default function MOCDetailPage() {
               </div>
             )
           ) : (
-            moc.parts_list && moc.parts_list.length > 0 ? (
-              <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
-                {/* Mobile cards */}
-                <div className="divide-y divide-neutral-200 sm:hidden">
-                  {moc.parts_list.map((part, idx) => (
-                    <div key={idx} className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="font-medium text-neutral-900">{part.name}</p>
-                          <p className="mt-1 text-sm text-neutral-500">ID: {part.part_id}</p>
-                        </div>
-                        <span className="rounded-full bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-600">
-                          {part.color}
+            (() => {
+              const partsArr = getPartsArray(moc.parts_list);
+              const isNewFormat = isRebrickablePartsList(moc.parts_list);
+              
+              return partsArr.length > 0 ? (
+                <div className="space-y-4">
+                  {/* Parts summary for new format */}
+                  {isNewFormat && (
+                    <div className="flex items-center justify-between rounded-xl bg-amber-50 px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        <span className="font-medium text-amber-800">
+                          {getPartsCount(moc.parts_list)} total parts ({getUniquePartsCount(moc.parts_list)} unique)
                         </span>
                       </div>
-                      <p className="mt-2 text-sm text-neutral-500">Source: {part.source}</p>
+                      {(moc.parts_list as MocPartsList).source && (
+                        <span className="text-sm text-amber-600">
+                          Source: {(moc.parts_list as MocPartsList).source}
+                        </span>
+                      )}
                     </div>
-                  ))}
+                  )}
+                  
+                  {/* Parts grid with images */}
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {partsArr.map((part: any, idx: number) => {
+                      const partNum = part.partNum || part.part_id || "";
+                      const partName = part.name || "Part";
+                      const partColor = part.colorName || part.color || "";
+                      const partColorRgb = part.colorRgb || "CCCCCC";
+                      const partQty = part.quantity || 1;
+                      const partImage = part.imageUrl || null;
+                      
+                      return (
+                        <div
+                          key={idx}
+                          className="flex gap-3 rounded-xl border border-neutral-200 bg-white p-3 transition hover:shadow-md"
+                          style={{ borderLeftColor: `#${partColorRgb}`, borderLeftWidth: '4px' }}
+                        >
+                          {/* Part image */}
+                          <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-neutral-100">
+                            {partImage ? (
+                              <Image
+                                src={partImage}
+                                alt={partName}
+                                fill
+                                className="object-contain p-1"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-neutral-400">
+                                <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Part info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="truncate font-medium text-neutral-900 text-sm">{partName}</p>
+                            <p className="mt-0.5 text-xs text-neutral-500 font-mono">{partNum}</p>
+                            <div className="mt-1 flex items-center gap-2">
+                              <span 
+                                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
+                                style={{ backgroundColor: `#${partColorRgb}20`, color: `#${partColorRgb}` }}
+                              >
+                                <span 
+                                  className="h-2 w-2 rounded-full"
+                                  style={{ backgroundColor: `#${partColorRgb}` }}
+                                />
+                                {partColor}
+                              </span>
+                              <span className="text-xs font-semibold text-neutral-700">×{partQty}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                
-                {/* Desktop table */}
-                <table className="hidden w-full sm:table">
-                  <thead className="bg-neutral-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Part ID</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Name</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Color</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-neutral-700">Source</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-200">
-                    {moc.parts_list.map((part, idx) => (
-                      <tr key={idx} className="hover:bg-neutral-50">
-                        <td className="px-4 py-3 font-mono text-sm text-neutral-600">{part.part_id}</td>
-                        <td className="px-4 py-3 text-sm text-neutral-900">{part.name}</td>
-                        <td className="px-4 py-3 text-sm text-neutral-600">{part.color}</td>
-                        <td className="px-4 py-3 text-sm text-neutral-600">{part.source}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="rounded-xl bg-neutral-100 p-8 text-center">
-                <p className="text-neutral-500">No parts list available yet.</p>
-              </div>
-            )
+              ) : (
+                <div className="rounded-xl bg-neutral-100 p-8 text-center">
+                  <p className="text-neutral-500">No parts list available yet.</p>
+                </div>
+              );
+            })()
           )}
         </div>
       </div>

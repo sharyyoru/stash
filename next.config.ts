@@ -13,6 +13,16 @@ const nextConfig: NextConfig = {
         hostname: "nxiatwcabpjrlqsmyubf.supabase.co",
         pathname: "/storage/**",
       },
+      {
+        protocol: "https",
+        hostname: "cdn.rebrickable.com",
+        pathname: "/media/**",
+      },
+      {
+        protocol: "https",
+        hostname: "rebrickable.com",
+        pathname: "/media/**",
+      },
     ],
     deviceSizes: [640, 750, 828, 1080, 1200],
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
