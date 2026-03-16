@@ -54,13 +54,24 @@ type MOC = {
   parts_list: Part[] | MocPartsList;
   instructions: Instruction[];
   images: string[];
-  videos: string[];
+  videos: string[]; // Can be video URLs or Instagram post URLs
   cover_image: string;
   pdf_url?: string;
   instruction_images?: string[];
   status: string;
   created_at: string;
 };
+
+// Helper to detect Instagram URLs
+function isInstagramUrl(url: string): boolean {
+  return url.includes('instagram.com/p/') || url.includes('instagram.com/reel/');
+}
+
+// Extract Instagram post ID from URL
+function getInstagramPostId(url: string): string | null {
+  const match = url.match(/instagram\.com\/(p|reel)\/([A-Za-z0-9_-]+)/);
+  return match ? match[2] : null;
+}
 
 // Helper to check if parts_list is the new format
 function isRebrickablePartsList(partsList: any): partsList is MocPartsList {
@@ -559,22 +570,37 @@ export default function MOCDetailPage() {
         </div>
       </div>
 
-      {/* Videos Section */}
+      {/* Videos/Media Section */}
       {moc.videos && moc.videos.length > 0 && (
         <div className="border-t border-neutral-200 bg-white py-8 sm:py-12">
           <div className="mx-auto max-w-6xl px-4">
-            <h2 className="text-xl font-bold text-neutral-900 sm:text-2xl">Videos</h2>
+            <h2 className="text-xl font-bold text-neutral-900 sm:text-2xl">Media</h2>
             <div className="mt-6 flex justify-center">
-              <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${Math.min(moc.videos.length, 3)}, minmax(0, 1fr))` }}>
+              <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${Math.min(moc.videos.length, 2)}, minmax(0, 1fr))` }}>
                 {moc.videos.map((video, idx) => (
-                  <div key={idx} className="relative overflow-hidden rounded-xl bg-neutral-100" style={{ aspectRatio: '9/16', maxHeight: '500px' }}>
-                    <video
-                      src={video}
-                      controls
-                      playsInline
-                      className="h-full w-full object-contain"
-                      preload="metadata"
-                    />
+                  <div key={idx} className="flex justify-center">
+                    {isInstagramUrl(video) ? (
+                      <div className="w-full max-w-[400px]">
+                        <iframe
+                          src={`https://www.instagram.com/p/${getInstagramPostId(video)}/embed`}
+                          className="w-full rounded-xl border-0"
+                          style={{ minHeight: '500px' }}
+                          allowFullScreen
+                          scrolling="no"
+                          allow="encrypted-media"
+                        />
+                      </div>
+                    ) : (
+                      <div className="relative overflow-hidden rounded-xl bg-neutral-100" style={{ aspectRatio: '9/16', maxHeight: '500px' }}>
+                        <video
+                          src={video}
+                          controls
+                          playsInline
+                          className="h-full w-full object-contain"
+                          preload="metadata"
+                        />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -737,7 +763,8 @@ export default function MOCDetailPage() {
                       const partColor = part.colorName || part.color || "";
                       const partColorRgb = part.colorRgb || "CCCCCC";
                       const partQty = part.quantity || 1;
-                      const partImage = part.imageUrl || null;
+                      // Generate image URL from Rebrickable CDN if not provided
+                      const partImage = part.imageUrl || (partNum ? `https://cdn.rebrickable.com/media/parts/elements/${partNum}.jpg` : null);
                       
                       return (
                         <div

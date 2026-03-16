@@ -630,16 +630,26 @@ export default function EditBuildPage() {
                 </div>
               </div>
 
-              {/* Videos */}
+              {/* Videos / Instagram Links */}
               <div>
                 <label className="block text-sm font-medium text-neutral-700 mb-2">
-                  Videos
+                  Videos & Instagram Posts
                 </label>
                 <div className="space-y-3">
                   {(currentMoc.videos || []).map((video, idx) => (
                     <div key={idx} className="flex items-center gap-3">
-                      <video src={video} className="h-16 w-28 rounded-lg object-cover" />
-                      <span className="flex-1 truncate text-sm text-neutral-600">{video.split('/').pop()}</span>
+                      {video.includes('instagram.com') ? (
+                        <div className="flex h-16 w-28 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500">
+                          <svg className="h-8 w-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                          </svg>
+                        </div>
+                      ) : (
+                        <video src={video} className="h-16 w-28 rounded-lg object-cover" />
+                      )}
+                      <span className="flex-1 truncate text-sm text-neutral-600">
+                        {video.includes('instagram.com') ? video : video.split('/').pop()}
+                      </span>
                       <button
                         type="button"
                         onClick={() => removeVideo(idx)}
@@ -649,6 +659,41 @@ export default function EditBuildPage() {
                       </button>
                     </div>
                   ))}
+                  
+                  {/* Instagram URL input */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Paste Instagram post URL (e.g., https://instagram.com/p/...)"
+                      className="flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const input = e.target as HTMLInputElement;
+                          const url = input.value.trim();
+                          if (url && (url.includes('instagram.com/p/') || url.includes('instagram.com/reel/'))) {
+                            setCurrentMoc(prev => ({ ...prev, videos: [...(prev.videos || []), url] }));
+                            input.value = '';
+                          }
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        const input = (e.target as HTMLElement).previousElementSibling as HTMLInputElement;
+                        const url = input.value.trim();
+                        if (url && (url.includes('instagram.com/p/') || url.includes('instagram.com/reel/'))) {
+                          setCurrentMoc(prev => ({ ...prev, videos: [...(prev.videos || []), url] }));
+                          input.value = '';
+                        }
+                      }}
+                      className="rounded-lg bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  
                   <label className="flex cursor-pointer items-center gap-2 rounded-lg border-2 border-dashed border-neutral-300 p-4 hover:border-amber-400 hover:bg-amber-50">
                     <input
                       type="file"
@@ -659,7 +704,7 @@ export default function EditBuildPage() {
                     <svg className="h-5 w-5 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
-                    <span className="text-sm text-neutral-600">Upload video</span>
+                    <span className="text-sm text-neutral-600">Or upload video file</span>
                   </label>
                 </div>
               </div>

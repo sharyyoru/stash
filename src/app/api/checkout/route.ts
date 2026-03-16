@@ -5,6 +5,7 @@ import { createOrder, setPaymentIntent, type OrderItem } from "../../../lib/orde
 import { createPaymentIntent, toBaseUnits } from "../../../lib/ziina";
 import { notifyNewOrder } from "../../../lib/email";
 import { getDeliveryCharge } from "../../../lib/delivery-charge";
+import { validateDiscountCode, applyDiscountCode } from "../../../lib/discount-codes";
 
 const MAIL_CLUB_SLUG = "the-secret-stash-mail-club";
 
@@ -29,6 +30,7 @@ export async function POST(req: NextRequest) {
   const totalCount: number = body.totalCount ?? items.reduce((sum, item) => sum + (item.quantity || 0), 0);
   const currency: string = body.currency || "AED";
   const profile = body.profile ?? null;
+  const discountCode: string | undefined = body.discountCode?.trim();
 
   try {
     const hasMailClub = items.some((item) => item.slug === MAIL_CLUB_SLUG);
@@ -60,7 +62,24 @@ export async function POST(req: NextRequest) {
 
     // Get delivery charge from Sanity settings
     const deliveryCharge = isMailClubOnly(items) ? 0 : await getDeliveryCharge();
-    const totalAmount = subtotal + deliveryCharge;
+    
+    // Validate and apply discount code if provided
+    let discountAmount = 0;
+    let validatedDiscountCode: string | undefined;
+    
+    if (discountCode) {
+      const discountResult = await validateDiscountCode(discountCode, subtotal, "products");
+      if (!discountResult.valid) {
+        return NextResponse.json(
+          { error: discountResult.error || "Invalid discount code" },
+          { status: 400 },
+        );
+      }
+      discountAmount = discountResult.discount!.calculatedDiscount;
+      validatedDiscountCode = discountResult.discount!.code;
+    }
+    
+    const totalAmount = subtotal - discountAmount + deliveryCharge;
 
     // 1. Create the order in our database
     const order = await createOrder({
@@ -73,6 +92,9 @@ export async function POST(req: NextRequest) {
         email: session.user.email,
       },
       profile,
+      discountCode: validatedDiscountCode,
+      discountAmount,
+      subtotal,
     });
 
     // 2. Build redirect URLs

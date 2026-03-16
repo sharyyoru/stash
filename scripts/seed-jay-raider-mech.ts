@@ -52,15 +52,17 @@ const jayRaiderMechMoc = {
     { step: 6, text: "Place Jay minifigure into the cockpit and secure the cockpit glass. Your Raider Mech is ready for battle!" }
   ],
   images: [
+    "/mocs/jay-raider-mech/jay-raider-mech_instructions-ig-01_2.jpg",
+    "/mocs/jay-raider-mech/jay-raider-mech_instructions-ig-01.jpg",
     "/mocs/jay-raider-mech/jay-raider-mech_instructions.jpg",
     "/mocs/jay-raider-mech/jay-raider-mech_instructions_2.jpg",
     "/mocs/jay-raider-mech/jay-raider-mech_instructions_3.jpg",
     "/mocs/jay-raider-mech/jay-raider-mech_instructions_4.jpg"
   ],
   videos: [
-    "/mocs/jay-raider-mech/jay-raider-mech_instructions-ig.mp4"
+    "https://www.instagram.com/p/DV8NylICH_j/"
   ],
-  cover_image: "/mocs/jay-raider-mech/jay-raider-mech_instructions.jpg",
+  cover_image: "/mocs/jay-raider-mech/jay-raider-mech_instructions-ig-01_2.jpg",
   pdf_url: "/mocs/jay-raider-mech/Jay's Raider Mech Instructions.pdf",
   instruction_images: [
     "/mocs/jay-raider-mech/jay-raider-mech_instructions-ig-01.jpg",

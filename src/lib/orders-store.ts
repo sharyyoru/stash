@@ -33,6 +33,10 @@ export type Order = {
   // Jeebly shipping fields
   awbNumber?: string;
   shippingStatus?: string;
+  // Discount fields
+  discountCode?: string;
+  discountAmount?: number;
+  subtotal?: number;
 };
 
 function generateOrderId(): string {
@@ -59,6 +63,9 @@ function mapRowToOrder(row: any): Order {
     paymentStatus: row.payment_status ?? undefined,
     awbNumber: row.awb_number ?? undefined,
     shippingStatus: row.shipping_status ?? undefined,
+    discountCode: row.discount_code ?? undefined,
+    discountAmount: row.discount_amount ? Number(row.discount_amount) : undefined,
+    subtotal: row.subtotal ? Number(row.subtotal) : undefined,
   };
 }
 
@@ -68,7 +75,7 @@ export async function createOrder(
   const id = generateOrderId();
   const createdAt = new Date().toISOString();
 
-  const { items, totalAmount, totalCount, currency, customer, profile, proofUrl } = input;
+  const { items, totalAmount, totalCount, currency, customer, profile, proofUrl, discountCode, discountAmount, subtotal } = input;
 
   const { data, error } = await supabaseAdmin
     .from("orders")
@@ -84,6 +91,9 @@ export async function createOrder(
       items,
       profile: profile ?? null,
       proof_url: proofUrl ?? null,
+      discount_code: discountCode ?? null,
+      discount_amount: discountAmount ?? null,
+      subtotal: subtotal ?? null,
     })
     .select("*")
     .single();

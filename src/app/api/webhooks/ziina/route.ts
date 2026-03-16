@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOrderByPaymentIntent, updatePaymentStatus } from "../../../../lib/orders-store";
 import { getSubscriptionByPaymentIntent, activateSubscription, updateSubscriptionStatus } from "../../../../lib/subscriptions-store";
 import { notifyOrderPaid, notifySubscriptionActivated } from "../../../../lib/email";
+import { applyDiscountCode } from "../../../../lib/discount-codes";
 
 /**
  * Ziina Webhook Handler

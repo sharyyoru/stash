@@ -25,6 +25,17 @@ export default function CartButton({ label }: CartButtonProps) {
   const [existingAddress, setExistingAddress] = useState<Partial<Address> | null>(null);
   const [deliveryCharge, setDeliveryCharge] = useState<number>(25);
   const { data: session } = useSession();
+  
+  // Discount code state
+  const [discountCode, setDiscountCode] = useState("");
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [discountLoading, setDiscountLoading] = useState(false);
+  const [appliedDiscount, setAppliedDiscount] = useState<{
+    code: string;
+    type: "percentage" | "fixed";
+    value: number;
+    calculatedDiscount: number;
+  } | null>(null);
 
   const hasItems = items.length > 0;
 
@@ -40,7 +51,68 @@ export default function CartButton({ label }: CartButtonProps) {
   const effectiveDeliveryCharge = isMailClubOnly ? 0 : deliveryCharge;
 
   const subtotal = totalAmount;
-  const total = subtotal + effectiveDeliveryCharge;
+  const discountAmount = appliedDiscount?.calculatedDiscount || 0;
+  const total = subtotal - discountAmount + effectiveDeliveryCharge;
+  
+  // Reset discount when cart changes
+  useEffect(() => {
+    if (appliedDiscount && subtotal !== appliedDiscount.calculatedDiscount) {
+      // Recalculate discount if subtotal changed
+      if (appliedDiscount.type === "percentage") {
+        const newDiscount = (subtotal * appliedDiscount.value) / 100;
+        setAppliedDiscount({
+          ...appliedDiscount,
+          calculatedDiscount: Math.round(newDiscount * 100) / 100,
+        });
+      }
+    }
+  }, [subtotal, appliedDiscount]);
+  
+  const handleApplyDiscount = async () => {
+    if (!discountCode.trim() || discountLoading) return;
+    
+    setDiscountLoading(true);
+    setDiscountError(null);
+    
+    try {
+      const res = await fetch("/api/discount/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: discountCode.trim(),
+          amount: subtotal,
+          appliesTo: "products",
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (!data.valid) {
+        setDiscountError(data.error || "Invalid discount code");
+        setAppliedDiscount(null);
+        return;
+      }
+      
+      setAppliedDiscount({
+        code: data.discount.code,
+        type: data.discount.type,
+        value: data.discount.value,
+        calculatedDiscount: data.discount.calculatedDiscount,
+      });
+      setDiscountError(null);
+    } catch (error) {
+      setDiscountError("Failed to validate code");
+      setAppliedDiscount(null);
+    } finally {
+      setDiscountLoading(false);
+    }
+  };
+  
+  const handleRemoveDiscount = () => {
+    setAppliedDiscount(null);
+    setDiscountCode("");
+    setDiscountError(null);
+  };
   const formattedSubtotal = subtotal > 0
     ? `${currency} ${subtotal.toFixed(2).replace(/\.00$/, "")}`
     : `${currency} 0`;
@@ -140,6 +212,7 @@ export default function CartButton({ label }: CartButtonProps) {
           totalCount,
           currency,
           profile,
+          discountCode: appliedDiscount?.code,
         }),
       });
 
@@ -230,6 +303,21 @@ export default function CartButton({ label }: CartButtonProps) {
                         <span>Subtotal</span>
                         <span>{formattedSubtotal}</span>
                       </div>
+                      {appliedDiscount && (
+                        <div className="flex justify-between text-green-600">
+                          <span className="flex items-center gap-1">
+                            Discount ({appliedDiscount.code})
+                            <button
+                              type="button"
+                              onClick={handleRemoveDiscount}
+                              className="text-[10px] text-neutral-400 hover:text-red-500"
+                            >
+                              ✕
+                            </button>
+                          </span>
+                          <span>-{currency} {appliedDiscount.calculatedDiscount.toFixed(2)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-neutral-600">
                         <span>Delivery</span>
                         <span>{currency} {effectiveDeliveryCharge.toFixed(2)}</span>
@@ -242,6 +330,32 @@ export default function CartButton({ label }: CartButtonProps) {
                   )}
                 </div>
               </div>
+
+              {/* Discount Code Input */}
+              {hasItems && !appliedDiscount && (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={discountCode}
+                      onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                      placeholder="Discount code"
+                      className="flex-1 rounded-lg border border-neutral-200 px-3 py-1.5 text-xs focus:border-[#b08968] focus:outline-none focus:ring-1 focus:ring-[#b08968]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyDiscount}
+                      disabled={!discountCode.trim() || discountLoading}
+                      className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50 hover:bg-neutral-800"
+                    >
+                      {discountLoading ? "..." : "Apply"}
+                    </button>
+                  </div>
+                  {discountError && (
+                    <p className="text-[10px] text-red-500">{discountError}</p>
+                  )}
+                </div>
+              )}
 
               {hasItems ? (
                 <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
