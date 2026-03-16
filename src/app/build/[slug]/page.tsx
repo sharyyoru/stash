@@ -116,6 +116,7 @@ export default function MOCDetailPage() {
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
   const [pdfNumPages, setPdfNumPages] = useState<number>(0);
   const [selectedPdfPage, setSelectedPdfPage] = useState<number | null>(null);
+  const [recentMocs, setRecentMocs] = useState<MOC[]>([]);
 
   // Set up PDF.js worker on client side
   useEffect(() => {
@@ -145,6 +146,26 @@ export default function MOCDetailPage() {
     if (slug) {
       fetchMoc();
     }
+  }, [slug]);
+
+  // Fetch recent MOCs for the "Recent MOCs" section
+  useEffect(() => {
+    async function fetchRecentMocs() {
+      try {
+        const res = await fetch('/api/build');
+        const data = await res.json();
+        if (data.mocs) {
+          // Filter out current MOC and get last 3
+          const filtered = data.mocs
+            .filter((m: MOC) => m.slug !== slug)
+            .slice(0, 3);
+          setRecentMocs(filtered);
+        }
+      } catch (err) {
+        console.error("Failed to fetch recent MOCs:", err);
+      }
+    }
+    fetchRecentMocs();
   }, [slug]);
 
   // Get all images including cover
@@ -570,45 +591,6 @@ export default function MOCDetailPage() {
         </div>
       </div>
 
-      {/* Videos/Media Section */}
-      {moc.videos && moc.videos.length > 0 && (
-        <div className="border-t border-neutral-200 bg-white py-8 sm:py-12">
-          <div className="mx-auto max-w-6xl px-4">
-            <h2 className="text-xl font-bold text-neutral-900 sm:text-2xl">Media</h2>
-            <div className="mt-6 flex justify-center">
-              <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${Math.min(moc.videos.length, 2)}, minmax(0, 1fr))` }}>
-                {moc.videos.map((video, idx) => (
-                  <div key={idx} className="flex justify-center">
-                    {isInstagramUrl(video) ? (
-                      <div className="w-full max-w-[400px]">
-                        <iframe
-                          src={`https://www.instagram.com/p/${getInstagramPostId(video)}/embed`}
-                          className="w-full rounded-xl border-0"
-                          style={{ minHeight: '500px' }}
-                          allowFullScreen
-                          scrolling="no"
-                          allow="encrypted-media"
-                        />
-                      </div>
-                    ) : (
-                      <div className="relative overflow-hidden rounded-xl bg-neutral-100" style={{ aspectRatio: '9/16', maxHeight: '500px' }}>
-                        <video
-                          src={video}
-                          controls
-                          playsInline
-                          className="h-full w-full object-contain"
-                          preload="metadata"
-                        />
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* PDF Viewer Modal */}
       {pdfViewerOpen && moc.pdf_url && (
         <div 
@@ -650,49 +632,85 @@ export default function MOCDetailPage() {
         </div>
       )}
 
-      {/* Tabs for Instructions, Parts, and Instruction Gallery */}
-      <div className="border-t border-neutral-200">
+      {/* Media + Instructions Section - Side by Side on Desktop */}
+      <div className="border-t border-neutral-200 py-8 sm:py-12">
         <div className="mx-auto max-w-6xl px-4">
-          <div className="flex border-b border-neutral-200 overflow-x-auto">
-            <button
-              onClick={() => setActiveTab("instructions")}
-              className={`whitespace-nowrap px-6 py-4 text-sm font-medium transition ${
-                activeTab === "instructions"
-                  ? "border-b-2 border-amber-500 text-amber-600"
-                  : "text-neutral-500 hover:text-neutral-700"
-              }`}
-            >
-              Instructions ({moc.instructions?.length || 0})
-            </button>
-            <button
-              onClick={() => setActiveTab("parts")}
-              className={`whitespace-nowrap px-6 py-4 text-sm font-medium transition ${
-                activeTab === "parts"
-                  ? "border-b-2 border-amber-500 text-amber-600"
-                  : "text-neutral-500 hover:text-neutral-700"
-              }`}
-            >
-              Parts List ({getUniquePartsCount(moc.parts_list)})
-            </button>
-            {moc.pdf_url && moc.slug !== "master-lloyd-santoryu-style" && (
-              <button
-                onClick={() => setActiveTab("instruction_gallery")}
-                className={`whitespace-nowrap px-6 py-4 text-sm font-medium transition ${
-                  activeTab === "instruction_gallery"
-                    ? "border-b-2 border-amber-500 text-amber-600"
-                    : "text-neutral-500 hover:text-neutral-700"
-                }`}
-              >
-                Instruction Gallery {pdfNumPages > 0 ? `(${pdfNumPages} pages)` : ""}
-              </button>
+          <div className="flex flex-col gap-8 lg:flex-row lg:gap-8">
+            {/* Media Section - 1/3 width on desktop */}
+            {moc.videos && moc.videos.length > 0 && (
+              <div className="w-full lg:w-1/3 lg:flex-shrink-0">
+                <h2 className="mb-4 text-xl font-bold text-neutral-900 sm:text-2xl">Media</h2>
+                <div className="space-y-4">
+                  {moc.videos.map((video, idx) => (
+                    <div key={idx} className="w-full">
+                      {isInstagramUrl(video) ? (
+                        <div className="w-full">
+                          <iframe
+                            src={`https://www.instagram.com/p/${getInstagramPostId(video)}/embed/captioned`}
+                            className="w-full rounded-xl border-0"
+                            style={{ minHeight: '680px' }}
+                            allowFullScreen
+                            scrolling="no"
+                            allow="encrypted-media"
+                          />
+                        </div>
+                      ) : (
+                        <div className="relative overflow-hidden rounded-xl bg-neutral-100" style={{ aspectRatio: '9/16', maxHeight: '500px' }}>
+                          <video
+                            src={video}
+                            controls
+                            playsInline
+                            className="h-full w-full object-contain"
+                            preload="metadata"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
-          </div>
-        </div>
-      </div>
 
-      {/* Tab Content */}
-      <div className="py-8 sm:py-12">
-        <div className="mx-auto max-w-6xl px-4">
+            {/* Instructions/Parts Section - 2/3 width on desktop */}
+            <div className={`w-full ${moc.videos && moc.videos.length > 0 ? 'lg:w-2/3' : ''}`}>
+              {/* Tabs */}
+              <div className="mb-6 flex border-b border-neutral-200 overflow-x-auto">
+                <button
+                  onClick={() => setActiveTab("instructions")}
+                  className={`whitespace-nowrap px-4 py-3 text-sm font-medium transition sm:px-6 sm:py-4 ${
+                    activeTab === "instructions"
+                      ? "border-b-2 border-amber-500 text-amber-600"
+                      : "text-neutral-500 hover:text-neutral-700"
+                  }`}
+                >
+                  Instructions ({moc.instructions?.length || 0})
+                </button>
+                <button
+                  onClick={() => setActiveTab("parts")}
+                  className={`whitespace-nowrap px-4 py-3 text-sm font-medium transition sm:px-6 sm:py-4 ${
+                    activeTab === "parts"
+                      ? "border-b-2 border-amber-500 text-amber-600"
+                      : "text-neutral-500 hover:text-neutral-700"
+                  }`}
+                >
+                  Parts List ({getUniquePartsCount(moc.parts_list)})
+                </button>
+                {moc.pdf_url && moc.slug !== "master-lloyd-santoryu-style" && (
+                  <button
+                    onClick={() => setActiveTab("instruction_gallery")}
+                    className={`whitespace-nowrap px-4 py-3 text-sm font-medium transition sm:px-6 sm:py-4 ${
+                      activeTab === "instruction_gallery"
+                        ? "border-b-2 border-amber-500 text-amber-600"
+                        : "text-neutral-500 hover:text-neutral-700"
+                    }`}
+                  >
+                    Instruction Gallery {pdfNumPages > 0 ? `(${pdfNumPages} pages)` : ""}
+                  </button>
+                )}
+              </div>
+
+              {/* Tab Content */}
+              <div>
           {activeTab === "instructions" ? (
             moc.instructions && moc.instructions.length > 0 ? (
               <div className="space-y-4 sm:space-y-6">
@@ -940,8 +958,76 @@ export default function MOCDetailPage() {
               )}
             </div>
           ) : null}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Recent MOCs Section */}
+      {recentMocs.length > 0 && (
+        <div className="border-t border-neutral-200 bg-neutral-50 py-8 sm:py-12">
+          <div className="mx-auto max-w-6xl px-4">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-neutral-900 sm:text-2xl">Recent MOCs</h2>
+              <Link
+                href="/build"
+                className="text-sm font-medium text-amber-600 hover:text-amber-700"
+              >
+                View all →
+              </Link>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {recentMocs.map((recentMoc) => (
+                <Link
+                  key={recentMoc.id}
+                  href={`/build/${recentMoc.slug}`}
+                  className="group overflow-hidden rounded-xl bg-white shadow-sm transition hover:shadow-lg"
+                >
+                  <div className="relative aspect-[4/3] overflow-hidden bg-neutral-100">
+                    {recentMoc.cover_image ? (
+                      <Image
+                        src={recentMoc.cover_image}
+                        alt={recentMoc.title}
+                        fill
+                        className="object-cover transition group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-neutral-400">
+                        <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-semibold text-neutral-900 group-hover:text-amber-600 transition">
+                      {recentMoc.title}
+                    </h3>
+                    <p className="mt-1 text-sm text-neutral-500 line-clamp-2">
+                      {recentMoc.description}
+                    </p>
+                    <div className="mt-3 flex items-center gap-3 text-xs text-neutral-400">
+                      <span className="flex items-center gap-1">
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        {getUniquePartsCount(recentMoc.parts_list)} parts
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        {recentMoc.instructions?.length || 0} steps
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
