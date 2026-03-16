@@ -31,11 +31,13 @@ export type MOC = {
   title: string;
   description: string;
   design_features: string[];
-  parts_list: { part_id: string; name: string; color: string; source: string }[];
+  parts_list: { part_id: string; name: string; color: string; source: string; quantity?: number }[];
   instructions: MOCInstruction[];
   images: string[];
   videos: string[];
   cover_image: string;
+  pdf_url?: string;
+  instruction_images?: string[];
   status: "draft" | "published";
   created_at: string;
   updated_at: string;
@@ -120,7 +122,7 @@ export async function POST(req: NextRequest) {
     }
     
     const body = await req.json();
-    const { title, description, design_features, parts_list, instructions, images, videos, cover_image, status } = body;
+    const { title, description, design_features, parts_list, instructions, images, videos, cover_image, pdf_url, instruction_images, status } = body;
     
     if (!title) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -144,6 +146,8 @@ export async function POST(req: NextRequest) {
         images: images || [],
         videos: videos || [],
         cover_image: cover_image || "",
+        pdf_url: pdf_url || null,
+        instruction_images: instruction_images || [],
         status: status || "draft",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -202,6 +206,8 @@ export async function PUT(req: NextRequest) {
     if (body.images !== undefined) updateData.images = body.images;
     if (body.videos !== undefined) updateData.videos = body.videos;
     if (body.cover_image !== undefined) updateData.cover_image = body.cover_image;
+    if (body.pdf_url !== undefined) updateData.pdf_url = body.pdf_url;
+    if (body.instruction_images !== undefined) updateData.instruction_images = body.instruction_images;
     if (status !== undefined) updateData.status = status;
     
     const { data, error } = await supabaseAdmin

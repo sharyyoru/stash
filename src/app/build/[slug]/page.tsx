@@ -4,6 +4,12 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { Document, Page, pdfjs } from "react-pdf";
+import "react-pdf/dist/esm/Page/AnnotationLayer.css";
+import "react-pdf/dist/esm/Page/TextLayer.css";
+
+// Set up PDF.js worker
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 type Part = {
   part_id: string;
@@ -51,6 +57,8 @@ type MOC = {
   images: string[];
   videos: string[];
   cover_image: string;
+  pdf_url?: string;
+  instruction_images?: string[];
   status: string;
   created_at: string;
 };
@@ -94,7 +102,10 @@ export default function MOCDetailPage() {
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [selectedImage, setSelectedImage] = useState<number>(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"instructions" | "parts">("instructions");
+  const [activeTab, setActiveTab] = useState<"instructions" | "parts" | "instruction_gallery">("instructions");
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [pdfNumPages, setPdfNumPages] = useState<number>(0);
+  const [selectedPdfPage, setSelectedPdfPage] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchMoc() {
@@ -492,25 +503,51 @@ export default function MOCDetailPage() {
 
             {/* Action Buttons */}
             <div className="mt-8 flex flex-wrap gap-3">
-              <button
-                onClick={generatePDF}
-                disabled={generatingPdf}
-                className="inline-flex items-center justify-center rounded-xl bg-amber-500 px-6 py-3 font-medium text-white shadow-lg shadow-amber-500/25 transition hover:bg-amber-600 hover:shadow-amber-500/40 disabled:opacity-50"
-              >
-                {generatingPdf ? (
-                  <>
-                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                    Generating...
-                  </>
-                ) : (
-                  <>
+              {/* PDF Download - Use actual PDF for MOCs with pdf_url (except Master Lloyd), generate for others */}
+              {moc.pdf_url && moc.slug !== "master-lloyd-santoryu-style" ? (
+                <>
+                  <a
+                    href={moc.pdf_url}
+                    download
+                    className="inline-flex items-center justify-center rounded-xl bg-amber-500 px-6 py-3 font-medium text-white shadow-lg shadow-amber-500/25 transition hover:bg-amber-600 hover:shadow-amber-500/40"
+                  >
                     <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     Download PDF
-                  </>
-                )}
-              </button>
+                  </a>
+                  <button
+                    onClick={() => setPdfViewerOpen(true)}
+                    className="inline-flex items-center justify-center rounded-xl bg-blue-500 px-6 py-3 font-medium text-white shadow-lg shadow-blue-500/25 transition hover:bg-blue-600 hover:shadow-blue-500/40"
+                  >
+                    <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    View PDF
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={generatePDF}
+                  disabled={generatingPdf}
+                  className="inline-flex items-center justify-center rounded-xl bg-amber-500 px-6 py-3 font-medium text-white shadow-lg shadow-amber-500/25 transition hover:bg-amber-600 hover:shadow-amber-500/40 disabled:opacity-50"
+                >
+                  {generatingPdf ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Download PDF
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -521,29 +558,73 @@ export default function MOCDetailPage() {
         <div className="border-t border-neutral-200 bg-white py-8 sm:py-12">
           <div className="mx-auto max-w-6xl px-4">
             <h2 className="text-xl font-bold text-neutral-900 sm:text-2xl">Videos</h2>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              {moc.videos.map((video, idx) => (
-                <div key={idx} className="relative aspect-video overflow-hidden rounded-xl bg-neutral-100">
-                  <video
-                    src={video}
-                    controls
-                    className="h-full w-full object-cover"
-                    preload="metadata"
-                  />
-                </div>
-              ))}
+            <div className="mt-6 flex justify-center">
+              <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${Math.min(moc.videos.length, 3)}, minmax(0, 1fr))` }}>
+                {moc.videos.map((video, idx) => (
+                  <div key={idx} className="relative overflow-hidden rounded-xl bg-neutral-100" style={{ aspectRatio: '9/16', maxHeight: '500px' }}>
+                    <video
+                      src={video}
+                      controls
+                      playsInline
+                      className="h-full w-full object-contain"
+                      preload="metadata"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Tabs for Instructions and Parts */}
+      {/* PDF Viewer Modal */}
+      {pdfViewerOpen && moc.pdf_url && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setPdfViewerOpen(false)}
+        >
+          <button
+            onClick={() => setPdfViewerOpen(false)}
+            className="absolute top-4 right-4 z-10 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          
+          <div 
+            className="relative h-[90vh] w-full max-w-5xl rounded-xl bg-white overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-neutral-200 bg-neutral-50 px-4 py-3">
+              <h3 className="font-semibold text-neutral-900">PDF Instructions - {moc.title}</h3>
+              <a
+                href={moc.pdf_url}
+                download
+                className="inline-flex items-center rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600"
+              >
+                <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Download
+              </a>
+            </div>
+            <iframe
+              src={moc.pdf_url}
+              className="h-[calc(90vh-56px)] w-full"
+              title="PDF Instructions"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Tabs for Instructions, Parts, and Instruction Gallery */}
       <div className="border-t border-neutral-200">
         <div className="mx-auto max-w-6xl px-4">
-          <div className="flex border-b border-neutral-200">
+          <div className="flex border-b border-neutral-200 overflow-x-auto">
             <button
               onClick={() => setActiveTab("instructions")}
-              className={`px-6 py-4 text-sm font-medium transition ${
+              className={`whitespace-nowrap px-6 py-4 text-sm font-medium transition ${
                 activeTab === "instructions"
                   ? "border-b-2 border-amber-500 text-amber-600"
                   : "text-neutral-500 hover:text-neutral-700"
@@ -553,7 +634,7 @@ export default function MOCDetailPage() {
             </button>
             <button
               onClick={() => setActiveTab("parts")}
-              className={`px-6 py-4 text-sm font-medium transition ${
+              className={`whitespace-nowrap px-6 py-4 text-sm font-medium transition ${
                 activeTab === "parts"
                   ? "border-b-2 border-amber-500 text-amber-600"
                   : "text-neutral-500 hover:text-neutral-700"
@@ -561,6 +642,18 @@ export default function MOCDetailPage() {
             >
               Parts List ({getUniquePartsCount(moc.parts_list)})
             </button>
+            {moc.pdf_url && moc.slug !== "master-lloyd-santoryu-style" && (
+              <button
+                onClick={() => setActiveTab("instruction_gallery")}
+                className={`whitespace-nowrap px-6 py-4 text-sm font-medium transition ${
+                  activeTab === "instruction_gallery"
+                    ? "border-b-2 border-amber-500 text-amber-600"
+                    : "text-neutral-500 hover:text-neutral-700"
+                }`}
+              >
+                Instruction Gallery {pdfNumPages > 0 ? `(${pdfNumPages} pages)` : ""}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -604,7 +697,7 @@ export default function MOCDetailPage() {
                 <p className="text-neutral-500">No instructions available yet.</p>
               </div>
             )
-          ) : (
+          ) : activeTab === "parts" ? (
             (() => {
               const partsArr = getPartsArray(moc.parts_list);
               const isNewFormat = isRebrickablePartsList(moc.parts_list);
@@ -697,7 +790,123 @@ export default function MOCDetailPage() {
                 </div>
               );
             })()
-          )}
+          ) : activeTab === "instruction_gallery" && moc.pdf_url && moc.slug !== "master-lloyd-santoryu-style" ? (
+            <div className="space-y-6">
+              <div className="rounded-xl bg-blue-50 px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span className="font-medium text-blue-800">
+                      {pdfNumPages > 0 ? `${pdfNumPages} pages` : "Loading PDF pages..."}
+                    </span>
+                  </div>
+                  <span className="text-sm text-blue-600">Click any page to enlarge</span>
+                </div>
+              </div>
+              
+              <Document
+                file={moc.pdf_url}
+                onLoadSuccess={({ numPages }) => setPdfNumPages(numPages)}
+                loading={
+                  <div className="flex items-center justify-center py-12">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent"></div>
+                  </div>
+                }
+                error={
+                  <div className="rounded-xl bg-red-50 p-4 text-center text-red-600">
+                    Failed to load PDF. Please try downloading instead.
+                  </div>
+                }
+              >
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {Array.from(new Array(pdfNumPages), (_, idx) => (
+                    <div
+                      key={idx}
+                      className="group relative overflow-hidden rounded-xl bg-white shadow-md transition hover:shadow-xl cursor-pointer border border-neutral-200"
+                      onClick={() => setSelectedPdfPage(idx + 1)}
+                    >
+                      <Page
+                        pageNumber={idx + 1}
+                        width={300}
+                        renderTextLayer={false}
+                        renderAnnotationLayer={false}
+                        className="mx-auto"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="rounded-full bg-white/90 px-3 py-1 text-sm font-medium text-neutral-900">
+                          Page {idx + 1}
+                        </span>
+                        <span className="rounded-full bg-white/90 p-2">
+                          <svg className="h-4 w-4 text-neutral-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                          </svg>
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Document>
+              
+              {/* PDF Page Lightbox */}
+              {selectedPdfPage && (
+                <div 
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+                  onClick={() => setSelectedPdfPage(null)}
+                >
+                  <button
+                    onClick={() => setSelectedPdfPage(null)}
+                    className="absolute top-4 right-4 z-10 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
+                  >
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  
+                  {/* Navigation buttons */}
+                  {selectedPdfPage > 1 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedPdfPage(selectedPdfPage - 1); }}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20"
+                    >
+                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                  )}
+                  {selectedPdfPage < pdfNumPages && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedPdfPage(selectedPdfPage + 1); }}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20"
+                    >
+                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  )}
+                  
+                  <div 
+                    className="relative max-h-[90vh] overflow-auto rounded-xl bg-white p-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Document file={moc.pdf_url}>
+                      <Page
+                        pageNumber={selectedPdfPage}
+                        width={Math.min(800, window.innerWidth - 100)}
+                        renderTextLayer={false}
+                        renderAnnotationLayer={false}
+                      />
+                    </Document>
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-4 py-2 text-sm text-white">
+                      Page {selectedPdfPage} of {pdfNumPages}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
