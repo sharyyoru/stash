@@ -4,12 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Document, Page, pdfjs } from "react-pdf";
-import "react-pdf/dist/esm/Page/AnnotationLayer.css";
-import "react-pdf/dist/esm/Page/TextLayer.css";
+import dynamic from "next/dynamic";
 
-// Set up PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Dynamically import react-pdf to avoid SSR issues
+const Document = dynamic(() => import("react-pdf").then((mod) => mod.Document), { ssr: false });
+const Page = dynamic(() => import("react-pdf").then((mod) => mod.Page), { ssr: false });
 
 type Part = {
   part_id: string;
@@ -106,6 +105,13 @@ export default function MOCDetailPage() {
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
   const [pdfNumPages, setPdfNumPages] = useState<number>(0);
   const [selectedPdfPage, setSelectedPdfPage] = useState<number | null>(null);
+
+  // Set up PDF.js worker on client side
+  useEffect(() => {
+    import("react-pdf").then((pdfModule) => {
+      pdfModule.pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfModule.pdfjs.version}/build/pdf.worker.min.mjs`;
+    });
+  }, []);
 
   useEffect(() => {
     async function fetchMoc() {
