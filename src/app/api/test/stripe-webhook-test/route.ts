@@ -63,8 +63,12 @@ export async function POST(req: NextRequest) {
       amount: amount,
       billing_interval: interval,
       billing_interval_count: intervalCount,
-      current_period_start: new Date((subscription.current_period_start || 0) * 1000).toISOString(),
-      current_period_end: new Date((subscription.current_period_end || 0) * 1000).toISOString(),
+      current_period_start: subscription.current_period_start 
+        ? new Date(subscription.current_period_start * 1000).toISOString() 
+        : new Date().toISOString(),
+      current_period_end: subscription.current_period_end 
+        ? new Date(subscription.current_period_end * 1000).toISOString() 
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };

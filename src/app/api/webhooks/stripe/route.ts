@@ -286,8 +286,12 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     amount: amount,
     billing_interval: interval,
     billing_interval_count: intervalCount,
-    current_period_start: new Date(((subscription as any).current_period_start || 0) * 1000).toISOString(),
-    current_period_end: new Date(((subscription as any).current_period_end || 0) * 1000).toISOString(),
+    current_period_start: (subscription as any).current_period_start 
+      ? new Date((subscription as any).current_period_start * 1000).toISOString() 
+      : new Date().toISOString(),
+    current_period_end: (subscription as any).current_period_end 
+      ? new Date((subscription as any).current_period_end * 1000).toISOString() 
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -334,8 +338,12 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       amount,
       billingInterval: interval,
       createdAt: new Date().toISOString(),
-      currentPeriodStart: new Date((subscription.current_period_start || 0) * 1000).toISOString(),
-      currentPeriodEnd: new Date((subscription.current_period_end || 0) * 1000).toISOString(),
+      currentPeriodStart: subscription.current_period_start 
+        ? new Date(subscription.current_period_start * 1000).toISOString() 
+        : new Date().toISOString(),
+      currentPeriodEnd: subscription.current_period_end 
+        ? new Date(subscription.current_period_end * 1000).toISOString() 
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     });
     console.log("[Stripe Webhook] Admin notification sent for new subscription");
   } catch (emailError) {
@@ -380,8 +388,12 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
     amount: amount,
     billing_interval: interval,
     billing_interval_count: intervalCount,
-    current_period_start: new Date((sub.current_period_start || 0) * 1000).toISOString(),
-    current_period_end: new Date((sub.current_period_end || 0) * 1000).toISOString(),
+    current_period_start: sub.current_period_start 
+      ? new Date(sub.current_period_start * 1000).toISOString() 
+      : new Date().toISOString(),
+    current_period_end: sub.current_period_end 
+      ? new Date(sub.current_period_end * 1000).toISOString() 
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -428,11 +440,19 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 
   const updateData: any = {
     status: sub.status,
-    current_period_start: new Date((sub.current_period_start || 0) * 1000).toISOString(),
-    current_period_end: new Date((sub.current_period_end || 0) * 1000).toISOString(),
+    current_period_start: sub.current_period_start 
+      ? new Date(sub.current_period_start * 1000).toISOString() 
+      : undefined,
+    current_period_end: sub.current_period_end 
+      ? new Date(sub.current_period_end * 1000).toISOString() 
+      : undefined,
     cancel_at_period_end: sub.cancel_at_period_end,
     updated_at: new Date().toISOString(),
   };
+
+  // Remove undefined values to avoid overwriting good data with null
+  if (!updateData.current_period_start) delete updateData.current_period_start;
+  if (!updateData.current_period_end) delete updateData.current_period_end;
 
   // Only update tier info if we have valid data
   if (amount > 0) {
