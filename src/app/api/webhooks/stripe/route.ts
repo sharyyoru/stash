@@ -509,6 +509,29 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   if (error) {
     console.error("Failed to log payment:", error);
   }
+
+  // Also update subscription dates from Stripe (for renewals)
+  // This ensures dates are synced even if subscription.updated webhook arrives late
+  try {
+    const stripe = getStripe();
+    const stripeSub = await stripe.subscriptions.retrieve(subscriptionId) as any;
+    
+    if (stripeSub.current_period_start && stripeSub.current_period_end) {
+      await supabaseAdmin
+        .from("secret_stash_subscriptions")
+        .update({
+          status: stripeSub.status,
+          current_period_start: new Date(stripeSub.current_period_start * 1000).toISOString(),
+          current_period_end: new Date(stripeSub.current_period_end * 1000).toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", subscriptionId);
+      
+      console.log("[Stripe Webhook] Updated subscription dates after payment:", subscriptionId);
+    }
+  } catch (err) {
+    console.error("[Stripe Webhook] Failed to update subscription dates after payment:", err);
+  }
 }
 
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
