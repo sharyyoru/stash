@@ -329,6 +329,29 @@ export const secretStashPageQuery = groq`*[_type == "secretStashPage"][0]{
     savings,
     isPopular
   },
+  volumes[isAvailable == true] | order(order asc) {
+    _key,
+    id,
+    order,
+    title,
+    description,
+    month,
+    "imageUrl": image.asset->url,
+    isDefault,
+    isCurrent
+  },
+  "allEditions": volumes[] | order(order asc) {
+    _key,
+    id,
+    order,
+    title,
+    description,
+    month,
+    "imageUrl": image.asset->url,
+    isDefault,
+    isAvailable,
+    isCurrent
+  },
   "cancellationPolicy": cancellationPolicyText
 }`;
 

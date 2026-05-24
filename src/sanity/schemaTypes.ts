@@ -675,6 +675,96 @@ export const secretStashPageType = defineType({
       ],
     }),
     defineField({
+      name: "volumes",
+      title: "Available Editions",
+      type: "array",
+      description: "Editions that new subscribers can choose to start from. Order them sequentially (1, 2, 3...) for tracking progression.",
+      of: [
+        {
+          type: "object",
+          name: "volume",
+          title: "Edition",
+          fields: [
+            {
+              name: "id",
+              title: "Edition ID",
+              type: "string",
+              description: "Unique identifier (e.g., 'edition-1', 'edition-2')",
+            },
+            {
+              name: "order",
+              title: "Edition Order",
+              type: "number",
+              description: "Sequential order number (1, 2, 3...) used to track subscription progression",
+              validation: (Rule: any) => Rule.required().min(1),
+            },
+            {
+              name: "title",
+              title: "Title",
+              type: "string",
+              description: "Edition name (e.g., 'Edition 1 - Spring Collection')",
+            },
+            {
+              name: "description",
+              title: "Short Description",
+              type: "text",
+              rows: 2,
+              description: "Brief description of what's in this edition",
+            },
+            {
+              name: "image",
+              title: "Edition Image",
+              type: "image",
+              options: { hotspot: true },
+              description: "Preview image for this edition",
+            },
+            {
+              name: "month",
+              title: "Month",
+              type: "string",
+              description: "Month this edition represents (e.g., 'January 2025')",
+            },
+            {
+              name: "isDefault",
+              title: "Default Selection",
+              type: "boolean",
+              initialValue: false,
+              description: "If checked, this edition will be pre-selected for new subscribers",
+            },
+            {
+              name: "isAvailable",
+              title: "Available for New Subscribers",
+              type: "boolean",
+              initialValue: true,
+              description: "Toggle off to hide this edition from selection",
+            },
+            {
+              name: "isCurrent",
+              title: "Current Edition",
+              type: "boolean",
+              initialValue: false,
+              description: "Mark as the edition being shipped this month",
+            },
+          ],
+          preview: {
+            select: {
+              title: "title",
+              order: "order",
+              month: "month",
+              media: "image",
+            },
+            prepare({ title, order, month, media }: any) {
+              return {
+                title: `#${order || "?"}: ${title || "Untitled"}`,
+                subtitle: month,
+                media,
+              };
+            },
+          },
+        },
+      ],
+    }),
+    defineField({
       name: "cancellationPolicy",
       title: "Cancellation Policy",
       type: "text",

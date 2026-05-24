@@ -292,6 +292,8 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     current_period_end: (subscription as any).current_period_end 
       ? new Date((subscription as any).current_period_end * 1000).toISOString() 
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    starting_volume_id: metadata.startingVolumeId || null,
+    starting_volume_title: metadata.startingVolumeTitle || null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -377,13 +379,16 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
     tierName = "1 month Subscription";
   }
 
+  // Get metadata from subscription (passed through from checkout)
+  const metadata = sub.metadata || {};
+
   const subscriptionData = {
     id: sub.id,
     stripe_customer_id: sub.customer,
     user_email: customer.email,
     user_name: customer.name,
-    tier_id: null,
-    tier_name: tierName,
+    tier_id: metadata.tierId || null,
+    tier_name: metadata.tierName || tierName,
     status: sub.status,
     amount: amount,
     billing_interval: interval,
@@ -394,6 +399,8 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
     current_period_end: sub.current_period_end 
       ? new Date(sub.current_period_end * 1000).toISOString() 
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    starting_volume_id: metadata.startingVolumeId || null,
+    starting_volume_title: metadata.startingVolumeTitle || null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -401,9 +408,10 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
   console.log("[Stripe Webhook] Storing subscription from created event:", {
     subscriptionId: sub.id,
     userEmail: customer.email,
-    tierName,
+    tierName: subscriptionData.tier_name,
     interval,
     amount,
+    startingVolume: subscriptionData.starting_volume_title,
   });
 
   const { error } = await supabaseAdmin

@@ -3,6 +3,19 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { supabaseAdmin } from "../../../../lib/supabase-admin";
 import { sendPackageSentEmail } from "../../../../lib/email-notifications";
+import { sanityClient } from "../../../../sanity/client";
+import { groq } from "next-sanity";
+
+// Query to get all editions for admin
+const allEditionsQuery = groq`*[_type == "secretStashPage"][0]{
+  "editions": volumes[] | order(order asc) {
+    id,
+    order,
+    title,
+    month,
+    isCurrent
+  }
+}`;
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase());
 
@@ -157,7 +170,16 @@ export async function GET(req: NextRequest) {
       renewalsThisMonth,
     };
 
-    return NextResponse.json({ subscriptions: enrichedSubscriptions, stats });
+    // Fetch editions from Sanity for edition tracking
+    let editions: any[] = [];
+    try {
+      const sanityData = await sanityClient.fetch(allEditionsQuery);
+      editions = (sanityData?.editions || []).filter((e: any) => e && e.id && e.order);
+    } catch (err) {
+      console.error("[Admin Secret Stash] Failed to fetch editions from Sanity:", err);
+    }
+
+    return NextResponse.json({ subscriptions: enrichedSubscriptions, stats, editions });
   } catch (error: any) {
     console.error("Admin Secret Stash API error:", error);
     return NextResponse.json({ error: error.message || "Internal error" }, { status: 500 });

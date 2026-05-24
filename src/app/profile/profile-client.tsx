@@ -23,6 +23,8 @@ type SecretStashSubscription = {
   created_at: string;
   updated_at?: string;
   cancelled_at?: string;
+  starting_volume_id?: string;
+  starting_volume_title?: string;
 };
 
 type ProfileClientProps = {
@@ -500,6 +502,14 @@ export default function ProfileClient({ name, email, image, orders = [], subscri
                         {secretStashStatusLabel(sub.status, sub.cancel_at_period_end || cancelledSubs.has(sub.id))}
                       </span>
                     </div>
+
+                    {/* Starting Volume */}
+                    {sub.starting_volume_title && (
+                      <div className="rounded-xl bg-gradient-to-r from-purple-50 to-blue-50 p-3">
+                        <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-purple-600">Starting Volume</p>
+                        <p className="mt-0.5 text-sm font-semibold text-neutral-900">{sub.starting_volume_title}</p>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-3 text-[11px]">
                       <div>

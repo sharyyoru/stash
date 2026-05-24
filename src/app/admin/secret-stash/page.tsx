@@ -52,6 +52,17 @@ type SecretStashSubscription = {
   cancelled_at?: string;
   profile?: Profile | null;
   currentMonthDelivery?: CurrentMonthDelivery | null;
+  // Edition tracking
+  starting_volume_id?: string;
+  starting_volume_title?: string;
+};
+
+type Edition = {
+  id: string;
+  order: number;
+  title: string;
+  month?: string;
+  isCurrent?: boolean;
 };
 
 type Stats = {
@@ -111,12 +122,49 @@ function getMonthOptions(): string[] {
   return months;
 }
 
+// Calculate how many months have passed since subscription start
+function getMonthsSubscribed(createdAt: string): number {
+  const start = new Date(createdAt);
+  const now = new Date();
+  const months = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+  return Math.max(0, months);
+}
+
+// Calculate expected edition based on starting edition and months subscribed
+function getExpectedEdition(
+  startingVolumeId: string | undefined,
+  createdAt: string,
+  editions: Edition[]
+): Edition | null {
+  if (!editions.length) return null;
+  
+  // If no starting volume, use the first available edition
+  const startingEdition = startingVolumeId 
+    ? editions.find(e => e.id === startingVolumeId)
+    : editions[0];
+  
+  if (!startingEdition) return editions[0];
+  
+  const monthsSubscribed = getMonthsSubscribed(createdAt);
+  const startingOrder = startingEdition.order;
+  const expectedOrder = startingOrder + monthsSubscribed;
+  
+  // Find the edition with this order number, or the highest available
+  const expectedEdition = editions.find(e => e.order === expectedOrder);
+  if (expectedEdition) return expectedEdition;
+  
+  // If we've exceeded available editions, return the last one
+  const maxEdition = editions.reduce((max, e) => e.order > max.order ? e : max, editions[0]);
+  return maxEdition;
+}
+
 export default function AdminSecretStashPage() {
   const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
 
   const [subscriptions, setSubscriptions] = useState<SecretStashSubscription[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [editions, setEditions] = useState<Edition[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -164,6 +212,7 @@ export default function AdminSecretStashPage() {
       const data = await res.json();
       setSubscriptions(data.subscriptions || []);
       setStats(data.stats || null);
+      setEditions(data.editions || []);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -185,28 +234,37 @@ export default function AdminSecretStashPage() {
 
   const exportToCSV = () => {
     const headers = [
-      "ID", "Email", "Name", "Tier", "Status", "Amount", "Billing Interval",
+      "ID", "Email", "Name", "Tier", "Expected Edition", "Starting Edition", "Months Subscribed",
+      "Status", "Amount", "Billing Interval",
       "Created", "Period Start", "Period End", "Mobile", "Address", "Area", "City",
       `${formatMonth(selectedMonth)} Letter Status`
     ];
     
-    const rows = filteredSubscriptions.map(sub => [
-      sub.id,
-      sub.user_email,
-      sub.user_name || "",
-      sub.tier_name || "",
-      sub.status,
-      sub.amount ? `AED ${sub.amount}` : "",
-      sub.billing_interval || "",
-      formatDate(sub.created_at),
-      formatDate(sub.current_period_start),
-      formatDate(sub.current_period_end),
-      sub.profile?.mobile || "",
-      sub.profile?.address_line1 || "",
-      sub.profile?.area || "",
-      sub.profile?.city || "",
-      sub.currentMonthDelivery?.status || (sub.status === "active" ? "pending" : "—")
-    ]);
+    const rows = filteredSubscriptions.map(sub => {
+      const expectedEdition = getExpectedEdition(sub.starting_volume_id, sub.created_at, editions);
+      const monthsSubscribed = getMonthsSubscribed(sub.created_at);
+      
+      return [
+        sub.id,
+        sub.user_email,
+        sub.user_name || "",
+        sub.tier_name || "",
+        expectedEdition ? `#${expectedEdition.order}: ${expectedEdition.title}` : "—",
+        sub.starting_volume_title || "—",
+        monthsSubscribed.toString(),
+        sub.status,
+        sub.amount ? `AED ${sub.amount}` : "",
+        sub.billing_interval || "",
+        formatDate(sub.created_at),
+        formatDate(sub.current_period_start),
+        formatDate(sub.current_period_end),
+        sub.profile?.mobile || "",
+        sub.profile?.address_line1 || "",
+        sub.profile?.area || "",
+        sub.profile?.city || "",
+        sub.currentMonthDelivery?.status || (sub.status === "active" ? "pending" : "—")
+      ];
+    });
     
     const csvContent = [headers, ...rows]
       .map(row => row.map(cell => `"${cell}"`).join(","))
@@ -705,6 +763,9 @@ export default function AdminSecretStashPage() {
                       Tier
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wide">
+                      Expected Edition
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wide">
                       Status
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wide">
@@ -756,6 +817,47 @@ export default function AdminSecretStashPage() {
                               Since {formatDate(sub.created_at)}
                             </p>
                           </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {(() => {
+                            const expectedEdition = getExpectedEdition(sub.starting_volume_id, sub.created_at, editions);
+                            const monthsSubscribed = getMonthsSubscribed(sub.created_at);
+                            
+                            return (
+                              <div>
+                                {expectedEdition ? (
+                                  <>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-purple-100 text-[10px] font-bold text-purple-700">
+                                        {expectedEdition.order}
+                                      </span>
+                                      <span className="font-medium text-neutral-800 text-xs">
+                                        {expectedEdition.title}
+                                      </span>
+                                    </div>
+                                    {expectedEdition.month && (
+                                      <p className="text-[10px] text-purple-600 mt-0.5">{expectedEdition.month}</p>
+                                    )}
+                                    {expectedEdition.isCurrent && (
+                                      <span className="inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 mt-1">
+                                        CURRENT
+                                      </span>
+                                    )}
+                                    {sub.starting_volume_title && (
+                                      <p className="text-[9px] text-neutral-400 mt-1">
+                                        Started: {sub.starting_volume_title}
+                                      </p>
+                                    )}
+                                    <p className="text-[9px] text-neutral-400">
+                                      {monthsSubscribed} month{monthsSubscribed !== 1 ? 's' : ''} subscribed
+                                    </p>
+                                  </>
+                                ) : (
+                                  <span className="text-neutral-400 text-xs">—</span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusColors[sub.status] || "bg-neutral-100 text-neutral-800"}`}>

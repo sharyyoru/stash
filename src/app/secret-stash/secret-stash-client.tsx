@@ -18,6 +18,18 @@ type PricingTier = {
   isPopular?: boolean;
 };
 
+type Volume = {
+  _key: string;
+  id: string;
+  order?: number;
+  title: string;
+  description?: string;
+  month?: string;
+  imageUrl?: string;
+  isDefault?: boolean;
+  isCurrent?: boolean;
+};
+
 type SecretStashPageData = {
   title?: string;
   subtitle?: string;
@@ -29,6 +41,7 @@ type SecretStashPageData = {
   shippingNote?: any[];
   currency?: string;
   pricingTiers?: PricingTier[];
+  volumes?: Volume[];
   cancellationPolicy?: string;
 };
 
@@ -89,6 +102,9 @@ export default function SecretStashClient({
   const [selectedTier, setSelectedTier] = useState<PricingTier | null>(
     pageData?.pricingTiers?.find((t) => t.isPopular) || pageData?.pricingTiers?.[0] || null
   );
+  const [selectedVolume, setSelectedVolume] = useState<Volume | null>(
+    pageData?.volumes?.find((v) => v.isDefault) || pageData?.volumes?.[0] || null
+  );
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,6 +113,7 @@ export default function SecretStashClient({
   const gallery = pageData?.gallery || [];
   const benefits = pageData?.benefits || [];
   const pricingTiers = pageData?.pricingTiers || [];
+  const volumes = pageData?.volumes || [];
 
   const handleSubscribe = async () => {
     if (!isSignedIn) {
@@ -106,6 +123,11 @@ export default function SecretStashClient({
 
     if (!selectedTier?.stripePriceId) {
       setError("Please select a subscription plan");
+      return;
+    }
+
+    if (volumes.length > 0 && !selectedVolume) {
+      setError("Please select a starting volume");
       return;
     }
 
@@ -120,6 +142,8 @@ export default function SecretStashClient({
           priceId: selectedTier.stripePriceId,
           tierId: selectedTier.id,
           tierName: selectedTier.name,
+          volumeId: selectedVolume?.id || null,
+          volumeTitle: selectedVolume?.title || null,
         }),
       });
 
@@ -219,6 +243,95 @@ export default function SecretStashClient({
                     />
                   </button>
                 ))}
+              </div>
+            )}
+
+            {/* Edition Selection */}
+            {volumes.length > 0 && (
+              <div className="mt-6 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium uppercase tracking-[0.15em] text-neutral-500">
+                    Choose your starting edition
+                  </span>
+                  <span className="rounded-full bg-[#9d7cd8]/10 px-2 py-0.5 text-[10px] font-medium text-[#9d7cd8]">
+                    Required
+                  </span>
+                </div>
+                <div className="grid gap-3">
+                  {volumes.map((volume) => {
+                    const isSelected = selectedVolume?._key === volume._key;
+                    return (
+                      <button
+                        key={volume._key}
+                        type="button"
+                        onClick={() => setSelectedVolume(volume)}
+                        className={`relative flex gap-4 rounded-2xl border-2 p-3 text-left transition-all ${
+                          isSelected
+                            ? "border-[#9d7cd8] bg-gradient-to-br from-[#9d7cd8]/5 to-[#4eb8d5]/5 shadow-lg shadow-[#9d7cd8]/10"
+                            : "border-neutral-200 bg-white hover:border-[#9d7cd8]/50 hover:shadow-md"
+                        }`}
+                      >
+                        {/* Current Edition Badge */}
+                        {volume.isCurrent && (
+                          <div className="absolute -top-2 left-4 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                            CURRENT
+                          </div>
+                        )}
+                        
+                        {/* Edition Image */}
+                        {volume.imageUrl && (
+                          <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-neutral-100">
+                            <Image
+                              src={volume.imageUrl}
+                              alt={volume.title}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                        )}
+                        
+                        {/* Edition Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                {volume.order && (
+                                  <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-[#4eb8d5]/10 text-[10px] font-bold text-[#4eb8d5]">
+                                    {volume.order}
+                                  </span>
+                                )}
+                                <h3 className="font-semibold text-neutral-900 truncate">
+                                  {volume.title}
+                                </h3>
+                              </div>
+                              {volume.month && (
+                                <p className="mt-0.5 text-[10px] font-medium text-[#9d7cd8]">
+                                  {volume.month}
+                                </p>
+                              )}
+                              {volume.description && (
+                                <p className="mt-1 text-xs text-neutral-500 line-clamp-2">
+                                  {volume.description}
+                                </p>
+                              )}
+                            </div>
+                            <div
+                              className={`h-5 w-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                                isSelected ? "border-[#9d7cd8] bg-[#9d7cd8]" : "border-neutral-300"
+                              }`}
+                            >
+                              {isSelected && (
+                                <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>

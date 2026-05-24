@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing priceId" }, { status: 400 });
   }
 
-  const { priceId, tierId, tierName } = body;
+  const { priceId, tierId, tierName, volumeId, volumeTitle } = body;
 
   // Validate that user has a delivery address
   const { data: profile, error: profileError } = await supabaseAdmin
@@ -74,6 +74,8 @@ export async function POST(req: NextRequest) {
         tierId: tierId || "",
         tierName: tierName || "",
         productType: "secret-stash-mail-club",
+        startingVolumeId: volumeId || "",
+        startingVolumeTitle: volumeTitle || "",
       },
     });
 

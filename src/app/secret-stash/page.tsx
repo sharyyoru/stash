@@ -24,6 +24,29 @@ type SecretStashPageData = {
     savings?: string;
     isPopular?: boolean;
   }[];
+  volumes?: {
+    _key: string;
+    id: string;
+    order?: number;
+    title: string;
+    description?: string;
+    month?: string;
+    imageUrl?: string;
+    isDefault?: boolean;
+    isCurrent?: boolean;
+  }[];
+  allEditions?: {
+    _key: string;
+    id: string;
+    order?: number;
+    title: string;
+    description?: string;
+    month?: string;
+    imageUrl?: string;
+    isDefault?: boolean;
+    isAvailable?: boolean;
+    isCurrent?: boolean;
+  }[];
   cancellationPolicy?: string;
 };
 
