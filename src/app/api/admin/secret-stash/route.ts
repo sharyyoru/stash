@@ -174,10 +174,16 @@ export async function GET(req: NextRequest) {
     let editions: any[] = [];
     try {
       const sanityData = await sanityClient.fetch(allEditionsQuery);
+      console.log("[Admin Secret Stash] Sanity editions data:", JSON.stringify(sanityData));
       editions = (sanityData?.editions || []).filter((e: any) => e && e.id && e.order);
+      console.log("[Admin Secret Stash] Filtered editions:", editions.length);
     } catch (err) {
       console.error("[Admin Secret Stash] Failed to fetch editions from Sanity:", err);
     }
+
+    // Log subscription volume data for debugging
+    const subsWithVolume = enrichedSubscriptions.filter((s: any) => s.starting_volume_id);
+    console.log("[Admin Secret Stash] Subscriptions with starting_volume_id:", subsWithVolume.length, "of", enrichedSubscriptions.length);
 
     return NextResponse.json({ subscriptions: enrichedSubscriptions, stats, editions });
   } catch (error: any) {
