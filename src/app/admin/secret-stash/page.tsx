@@ -234,7 +234,7 @@ export default function AdminSecretStashPage() {
 
   const exportToCSV = () => {
     const headers = [
-      "ID", "Email", "Name", "Tier", "Expected Edition", "Starting Edition", "Months Subscribed",
+      "ID", "Email", "Name", "Tier", "Ship This Month (auto)", "Customer Selected", "Months Subscribed",
       "Status", "Amount", "Billing Interval",
       "Created", "Period Start", "Period End", "Mobile", "Address", "Area", "City",
       `${formatMonth(selectedMonth)} Letter Status`
@@ -763,7 +763,7 @@ export default function AdminSecretStashPage() {
                       Tier
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wide">
-                      Expected Edition
+                      Edition (Selected / Ship)
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-neutral-600 uppercase tracking-wide">
                       Status
@@ -822,39 +822,59 @@ export default function AdminSecretStashPage() {
                           {(() => {
                             const expectedEdition = getExpectedEdition(sub.starting_volume_id, sub.created_at, editions);
                             const monthsSubscribed = getMonthsSubscribed(sub.created_at);
-                            
+                            const hasSelection = Boolean(sub.starting_volume_title || sub.starting_volume_id);
+
                             return (
-                              <div>
-                                {expectedEdition ? (
-                                  <>
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-purple-100 text-[10px] font-bold text-purple-700">
-                                        {expectedEdition.order}
-                                      </span>
-                                      <span className="font-medium text-neutral-800 text-xs">
-                                        {expectedEdition.title}
-                                      </span>
-                                    </div>
-                                    {expectedEdition.month && (
-                                      <p className="text-[10px] text-purple-600 mt-0.5">{expectedEdition.month}</p>
-                                    )}
-                                    {expectedEdition.isCurrent && (
-                                      <span className="inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 mt-1">
-                                        CURRENT
-                                      </span>
-                                    )}
-                                    {sub.starting_volume_title && (
-                                      <p className="text-[9px] text-neutral-400 mt-1">
-                                        Started: {sub.starting_volume_title}
-                                      </p>
-                                    )}
-                                    <p className="text-[9px] text-neutral-400">
-                                      {monthsSubscribed} month{monthsSubscribed !== 1 ? 's' : ''} subscribed
+                              <div className="space-y-2 min-w-[180px]">
+                                {/* Marker 1: What the customer actually chose at checkout */}
+                                <div className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1.5">
+                                  <p className="text-[9px] font-bold uppercase tracking-wide text-blue-700">
+                                    Customer Selected
+                                  </p>
+                                  {hasSelection ? (
+                                    <p className="text-xs font-semibold text-blue-900">
+                                      {sub.starting_volume_title || sub.starting_volume_id}
                                     </p>
-                                  </>
-                                ) : (
-                                  <span className="text-neutral-400 text-xs">—</span>
-                                )}
+                                  ) : (
+                                    <p className="text-[10px] italic text-blue-400">
+                                      No volume recorded
+                                    </p>
+                                  )}
+                                </div>
+
+                                {/* Marker 2: Auto-computed edition to ship this month */}
+                                <div className="rounded-md border border-purple-200 bg-purple-50 px-2 py-1.5">
+                                  <p className="text-[9px] font-bold uppercase tracking-wide text-purple-700">
+                                    Ship This Month (auto)
+                                  </p>
+                                  {expectedEdition ? (
+                                    <>
+                                      <div className="flex items-center gap-1.5 mt-0.5">
+                                        <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-purple-100 text-[10px] font-bold text-purple-700">
+                                          {expectedEdition.order}
+                                        </span>
+                                        <span className="font-medium text-neutral-800 text-xs">
+                                          {expectedEdition.title}
+                                        </span>
+                                      </div>
+                                      {expectedEdition.month && (
+                                        <p className="text-[10px] text-purple-600 mt-0.5">{expectedEdition.month}</p>
+                                      )}
+                                      {expectedEdition.isCurrent && (
+                                        <span className="inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 mt-1">
+                                          CURRENT
+                                        </span>
+                                      )}
+                                      <p className="text-[9px] text-neutral-400 mt-1">
+                                        {monthsSubscribed} month{monthsSubscribed !== 1 ? 's' : ''} subscribed
+                                      </p>
+                                    </>
+                                  ) : (
+                                    <p className="text-[10px] italic text-neutral-400 mt-0.5">
+                                      Cannot compute (no edition data)
+                                    </p>
+                                  )}
+                                </div>
                               </div>
                             );
                           })()}
