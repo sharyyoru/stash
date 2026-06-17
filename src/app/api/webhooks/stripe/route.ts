@@ -275,7 +275,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   }
 
   // Store/update subscription in our database using upsert
-  const subscriptionData = {
+  const subscriptionData: Record<string, any> = {
     id: subscriptionId,
     stripe_customer_id: customerId,
     user_email: userEmail,
@@ -292,11 +292,18 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     current_period_end: (subscription as any).current_period_end 
       ? new Date((subscription as any).current_period_end * 1000).toISOString() 
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    starting_volume_id: metadata.startingVolumeId || null,
-    starting_volume_title: metadata.startingVolumeTitle || null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
+
+  // Only write volume fields when present, so we never overwrite a captured
+  // selection with null (e.g. if another webhook event races this one).
+  if (metadata.startingVolumeId) {
+    subscriptionData.starting_volume_id = metadata.startingVolumeId;
+  }
+  if (metadata.startingVolumeTitle) {
+    subscriptionData.starting_volume_title = metadata.startingVolumeTitle;
+  }
 
   const { error } = await supabaseAdmin
     .from("secret_stash_subscriptions")
@@ -382,7 +389,7 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
   // Get metadata from subscription (passed through from checkout)
   const metadata = sub.metadata || {};
 
-  const subscriptionData = {
+  const subscriptionData: Record<string, any> = {
     id: sub.id,
     stripe_customer_id: sub.customer,
     user_email: customer.email,
@@ -399,11 +406,18 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
     current_period_end: sub.current_period_end 
       ? new Date(sub.current_period_end * 1000).toISOString() 
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    starting_volume_id: metadata.startingVolumeId || null,
-    starting_volume_title: metadata.startingVolumeTitle || null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
+
+  // Only write volume fields when present, so we never overwrite a captured
+  // selection with null (e.g. if another webhook event races this one).
+  if (metadata.startingVolumeId) {
+    subscriptionData.starting_volume_id = metadata.startingVolumeId;
+  }
+  if (metadata.startingVolumeTitle) {
+    subscriptionData.starting_volume_title = metadata.startingVolumeTitle;
+  }
 
   console.log("[Stripe Webhook] Storing subscription from created event:", {
     subscriptionId: sub.id,
