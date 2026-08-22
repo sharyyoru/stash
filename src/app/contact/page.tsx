@@ -13,7 +13,7 @@ export default async function ContactPage() {
 
   const heading = page?.heading || "Get in Touch";
   const subheading = page?.subheading || "We'd love to hear from you. Reach out anytime!";
-  const email = page?.email || "hello@s-tash.store";
+  const email = page?.email || "stashcreative@gmail.com";
   const whatsapp = page?.whatsapp;
   const instagram = page?.instagram;
   const content = page?.content;

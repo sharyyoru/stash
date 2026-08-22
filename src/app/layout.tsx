@@ -68,7 +68,7 @@ export default async function RootLayout({
             {/* Global JSON-LD Schemas for SEO */}
             <OrganizationSchema
               name="Stash"
-              url="https://www.s-tash.store"
+              url={process.env.NEXT_PUBLIC_SITE_URL || ""}
               description="Stash is a curated shop for stationery and stickers in UAE."
               socialLinks={siteSettings?.socialLinks}
             />

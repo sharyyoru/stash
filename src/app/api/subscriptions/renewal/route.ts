@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     const daysUntilExpiry = Math.ceil((nextBilling.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
     // Create payment intent for renewal
-    const baseUrl = process.env.NEXTAUTH_URL || "https://s-tash.store";
+    const baseUrl = process.env.NEXTAUTH_URL || "";
     const successUrl = `${baseUrl}/subscription/renewal-success?subscription_id=${subscription.id}&payment_intent_id={PAYMENT_INTENT_ID}`;
     const cancelUrl = `${baseUrl}/subscription/renewal-cancel?subscription_id=${subscription.id}`;
     const failureUrl = `${baseUrl}/subscription/renewal-failed?subscription_id=${subscription.id}`;

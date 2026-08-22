@@ -20,7 +20,7 @@ async function sendAddressReminderEmail(userEmail: string, userName: string): Pr
   }
 
   try {
-    const profileUrl = `${process.env.NEXTAUTH_URL || "https://s-tash.store"}/profile`;
+    const profileUrl = `${process.env.NEXTAUTH_URL || ""}/profile`;
     
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",

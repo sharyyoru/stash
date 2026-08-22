@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(req: NextRequest) {
   try {
     // This endpoint provides the cron job setup instructions
-    const cronUrl = `${process.env.NEXTAUTH_URL || 'https://s-tash.store'}/api/cron/renewal-notifications`;
+    const cronUrl = `${process.env.NEXTAUTH_URL || ''}/api/cron/renewal-notifications`;
     
     const instructions = {
       cronUrl,

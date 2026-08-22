@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     });
 
     // 2. Build redirect URLs
-    const baseUrl = process.env.NEXTAUTH_URL || "https://s-tash.store";
+    const baseUrl = process.env.NEXTAUTH_URL || "";
     const successUrl = `${baseUrl}/subscription/success?subscription_id=${subscription.id}&payment_intent_id={PAYMENT_INTENT_ID}`;
     const cancelUrl = `${baseUrl}/subscription/cancel?subscription_id=${subscription.id}`;
     const failureUrl = `${baseUrl}/subscription/failed?subscription_id=${subscription.id}`;

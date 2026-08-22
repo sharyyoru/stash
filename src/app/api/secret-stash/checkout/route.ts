@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     );
 
     // Build URLs
-    const baseUrl = process.env.NEXTAUTH_URL || "https://s-tash.store";
+    const baseUrl = process.env.NEXTAUTH_URL || "";
     const successUrl = `${baseUrl}/secret-stash/success?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${baseUrl}/secret-stash`;
 

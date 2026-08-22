@@ -207,7 +207,7 @@ function generateSubscriptionXml(
 
 export async function GET() {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.s-tash.store";
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
     
     // Fetch all products and subscription tiers
     const [products, subscriptionData] = await Promise.all([

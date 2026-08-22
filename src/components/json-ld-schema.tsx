@@ -50,7 +50,7 @@ type BreadcrumbSchemaProps = {
   items: BreadcrumbItem[];
 };
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.s-tash.store";
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "";
 
 export function ProductSchema({ product }: ProductSchemaProps) {
   const schema = {

@@ -136,7 +136,7 @@ export async function notifyNewOrder(order: OrderEmailData): Promise<boolean> {
           </tbody>
         </table>
         
-        <p><a href="${process.env.NEXTAUTH_URL || 'https://s-tash.store'}/admin/orders" style="color: #b08968;">View in Admin Dashboard →</a></p>
+        <p><a href="${process.env.NEXTAUTH_URL || ''}/admin/orders" style="color: #b08968;">View in Admin Dashboard →</a></p>
         
         <div class="footer">
           <p>This is an automated notification from Stash Creative.</p>
@@ -212,7 +212,7 @@ export async function notifyOrderPaid(order: OrderEmailData): Promise<boolean> {
           </tbody>
         </table>
         
-        <p><a href="${process.env.NEXTAUTH_URL || 'https://s-tash.store'}/admin/orders" style="color: #155724; font-weight: bold;">Create Shipment in Admin Dashboard →</a></p>
+        <p><a href="${process.env.NEXTAUTH_URL || ''}/admin/orders" style="color: #155724; font-weight: bold;">Create Shipment in Admin Dashboard →</a></p>
         
         <div class="footer">
           <p>This is an automated notification from Stash Creative.</p>
@@ -232,7 +232,7 @@ export async function notifyShipmentCreated(order: OrderEmailData & { awbNumber:
   const adminSubject = `📦 Shipment Created: ${order.orderId} (AWB: ${order.awbNumber})`;
   const customerSubject = `Your Stash order is being prepared! 📦`;
   
-  const baseUrl = process.env.NEXTAUTH_URL || "https://s-tash.store";
+  const baseUrl = process.env.NEXTAUTH_URL || "";
   
   const adminHtml = `
     <!DOCTYPE html>
@@ -392,7 +392,7 @@ export async function notifySubscriptionActivated(subscription: SubscriptionEmai
   const adminSubject = `🔄 New Subscription: ${subscription.subscriptionId}`;
   const customerSubject = `Welcome to your ${subscription.productTitle} subscription! 🎉`;
   
-  const baseUrl = process.env.NEXTAUTH_URL || "https://s-tash.store";
+  const baseUrl = process.env.NEXTAUTH_URL || "";
   const nextBillingFormatted = new Date(subscription.nextBillingDate).toLocaleDateString("en-AE", {
     year: "numeric",
     month: "long",
@@ -559,7 +559,7 @@ export async function notifyAdminSubscriptionRenewal(data: SubscriptionRenewalEm
   if (ADMIN_EMAILS.length === 0) return false;
   
   const subject = `🔄 Subscription Renewal: ${data.subscriptionId}`;
-  const baseUrl = process.env.NEXTAUTH_URL || "https://s-tash.store";
+  const baseUrl = process.env.NEXTAUTH_URL || "";
   
   const html = `
     <!DOCTYPE html>
