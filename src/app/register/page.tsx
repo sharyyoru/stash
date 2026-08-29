@@ -1,42 +1,48 @@
 "use client";
 
-import { signIn } from "next-auth/react";
-import { useSearchParams, useRouter } from "next/navigation";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-export default function SignInPage() {
-  const searchParams = useSearchParams();
+export default function RegisterPage() {
   const router = useRouter();
-  const callbackUrl = searchParams.get("callbackUrl") || searchParams.get("callback") || "/";
-  const error = searchParams.get("error");
-  
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(error === "CredentialsSignin" ? "Invalid email or password" : "");
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setErrorMessage("");
+    setError("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      setLoading(false);
+      return;
+    }
 
     try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, name }),
       });
 
-      if (result?.error) {
-        setErrorMessage(result.error);
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Failed to create account");
         setLoading(false);
-      } else {
-        router.push(callbackUrl);
-        router.refresh();
+        return;
       }
+
+      // Redirect to sign-in with success message
+      router.push("/sign-in?registered=true");
     } catch (err) {
-      setErrorMessage("Something went wrong. Please try again.");
+      setError("Something went wrong. Please try again.");
       setLoading(false);
     }
   };
@@ -49,22 +55,36 @@ export default function SignInPage() {
           <div className="relative space-y-5">
             <div className="space-y-1">
               <p className="text-xs font-medium uppercase tracking-[0.2em] text-neutral-500">
-                Welcome back
+                Get started
               </p>
               <h1 className="text-lg font-semibold tracking-tight text-neutral-900">
-                Sign in to your stash
+                Create your account
               </h1>
               <p className="text-xs text-neutral-600">
-                Enter your email and password to continue.
+                Join Stash to track orders and manage your subscriptions.
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {errorMessage && (
+              {error && (
                 <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
-                  {errorMessage}
+                  {error}
                 </div>
               )}
+
+              <div className="space-y-1">
+                <label htmlFor="name" className="block text-xs font-medium text-neutral-700">
+                  Name (optional)
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your name"
+                  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm placeholder:text-neutral-400 focus:border-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-400"
+                />
+              </div>
 
               <div className="space-y-1">
                 <label htmlFor="email" className="block text-xs font-medium text-neutral-700">
@@ -82,22 +102,32 @@ export default function SignInPage() {
               </div>
 
               <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="password" className="block text-xs font-medium text-neutral-700">
-                    Password
-                  </label>
-                  <Link
-                    href="/forgot-password"
-                    className="text-xs text-neutral-500 hover:text-neutral-700"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
+                <label htmlFor="password" className="block text-xs font-medium text-neutral-700">
+                  Password
+                </label>
                 <input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm placeholder:text-neutral-400 focus:border-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-400"
+                />
+                <p className="text-[10px] text-neutral-400">
+                  At least 8 characters with a letter and number
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="confirmPassword" className="block text-xs font-medium text-neutral-700">
+                  Confirm password
+                </label>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
                   required
                   className="w-full rounded-lg border border-neutral-200 px-3 py-2 text-sm placeholder:text-neutral-400 focus:border-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-400"
@@ -109,15 +139,15 @@ export default function SignInPage() {
                 disabled={loading}
                 className="inline-flex w-full items-center justify-center rounded-full bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {loading ? "Signing in..." : "Sign in"}
+                {loading ? "Creating account..." : "Create account"}
               </button>
             </form>
 
             <div className="text-center">
               <p className="text-xs text-neutral-500">
-                Don't have an account?{" "}
-                <Link href="/register" className="font-medium text-neutral-900 hover:underline">
-                  Create one
+                Already have an account?{" "}
+                <Link href="/sign-in" className="font-medium text-neutral-900 hover:underline">
+                  Sign in
                 </Link>
               </p>
             </div>
