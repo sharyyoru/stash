@@ -215,6 +215,10 @@ export async function sendPasswordResetEmail(
     </html>
   `;
 
+  console.log("[Auth] Sending password reset email to:", email);
+  console.log("[Auth] Reset URL:", resetUrl);
+  console.log("[Auth] From email:", fromEmail);
+
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -230,12 +234,16 @@ export async function sendPasswordResetEmail(
       }),
     });
 
+    const responseText = await response.text();
+    console.log("[Auth] Resend API response status:", response.status);
+    console.log("[Auth] Resend API response:", responseText);
+
     if (!response.ok) {
-      const error = await response.text();
-      console.error("[Auth] Failed to send email:", error);
+      console.error("[Auth] Failed to send email:", responseText);
       return false;
     }
 
+    console.log("[Auth] Password reset email sent successfully to:", email);
     return true;
   } catch (error) {
     console.error("[Auth] Email send error:", error);
